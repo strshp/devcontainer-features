@@ -58,6 +58,7 @@ cat > /usr/local/bin/claude-code-persist-init <<'INITSH'
 #!/bin/sh
 set -e
 TARGET_USER="${SUDO_USER:-$(id -un)}"
+WORKSPACE_FOLDER="${1:-}"
 
 PROJECTS_DIR=/var/claude-code-projects
 for s in projects todos shell-snapshots sessions session-env tasks plans file-history paste-cache; do
@@ -70,6 +71,18 @@ touch "$PROJECTS_DIR/history.jsonl"
 # itself — it stays invisible to git status entirely.
 if [ ! -f "$PROJECTS_DIR/.gitignore" ]; then
     printf '*\n' > "$PROJECTS_DIR/.gitignore"
+fi
+
+# Ensure devcontainer-lock.json is in .devcontainer/.gitignore so devcontainer
+# CLI's lock file (regenerated on each build) doesn't churn the user's repo.
+if [ -n "$WORKSPACE_FOLDER" ] && [ -d "$WORKSPACE_FOLDER/.devcontainer" ]; then
+    DEVCONTAINER_GITIGN="$WORKSPACE_FOLDER/.devcontainer/.gitignore"
+    if [ ! -f "$DEVCONTAINER_GITIGN" ]; then
+        printf 'devcontainer-lock.json\n' > "$DEVCONTAINER_GITIGN"
+        chown "$TARGET_USER" "$DEVCONTAINER_GITIGN" 2>/dev/null || true
+    elif ! grep -qFx 'devcontainer-lock.json' "$DEVCONTAINER_GITIGN"; then
+        printf 'devcontainer-lock.json\n' >> "$DEVCONTAINER_GITIGN"
+    fi
 fi
 
 chown -R "$TARGET_USER" "$PROJECTS_DIR"                                  2>/dev/null || true

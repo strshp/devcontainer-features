@@ -96,4 +96,6 @@ jobs:
           grep -q hello /tmp/cc-test/.devcontainer/claude-projects/projects/.persist-test
           test -f /tmp/cc-test/.devcontainer/claude-projects/.gitignore
           grep -q '^\*$' /tmp/cc-test/.devcontainer/claude-projects/.gitignore
+          test -f /tmp/cc-test/.devcontainer/.gitignore
+          grep -qFx 'devcontainer-lock.json' /tmp/cc-test/.devcontainer/.gitignore
           echo "Host-side bind mount verified."
