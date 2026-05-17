@@ -73,15 +73,18 @@ if [ ! -f "$PROJECTS_DIR/.gitignore" ]; then
     printf '*\n' > "$PROJECTS_DIR/.gitignore"
 fi
 
-# Ensure devcontainer-lock.json is in .devcontainer/.gitignore so devcontainer
-# CLI's lock file (regenerated on each build) doesn't churn the user's repo.
+# Ensure devcontainer-lock.json and .gitignore itself are in .devcontainer/.gitignore.
+# Including ".gitignore" means this file is also hidden from git status, so the
+# feature's bookkeeping is invisible to the user's repo.
 if [ -n "$WORKSPACE_FOLDER" ] && [ -d "$WORKSPACE_FOLDER/.devcontainer" ]; then
     DEVCONTAINER_GITIGN="$WORKSPACE_FOLDER/.devcontainer/.gitignore"
     if [ ! -f "$DEVCONTAINER_GITIGN" ]; then
-        printf 'devcontainer-lock.json\n' > "$DEVCONTAINER_GITIGN"
+        printf 'devcontainer-lock.json\n.gitignore\n' > "$DEVCONTAINER_GITIGN"
         chown "$TARGET_USER" "$DEVCONTAINER_GITIGN" 2>/dev/null || true
-    elif ! grep -qFx 'devcontainer-lock.json' "$DEVCONTAINER_GITIGN"; then
-        printf 'devcontainer-lock.json\n' >> "$DEVCONTAINER_GITIGN"
+    else
+        for line in 'devcontainer-lock.json' '.gitignore'; do
+            grep -qFx "$line" "$DEVCONTAINER_GITIGN" || printf '%s\n' "$line" >> "$DEVCONTAINER_GITIGN"
+        done
     fi
 fi
 
