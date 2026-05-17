@@ -1,27 +1,26 @@
 
 # Claude Code Persistence (claude-code-persist)
 
-Persists Claude Code state across container rebuilds.
+Claude Code の状態をコンテナ再ビルド越しに永続化する Feature です。
 
-State is split across three mounts:
+状態を 3 つのマウントに分けて保存します：
 
-| Where on host | What it stores | Mount type |
+| 保存先 | 中身 | マウント種別 |
 |---|---|---|
-| Docker named volume `claude-code-global` | `~/.claude.json`, credentials, settings, plugins, caches, etc. — anything **not** in the per-project list | volume (shared across all projects on this machine) |
-| `./.devcontainer/claude-projects/` in the project | Conversation/session data: `projects/`, `todos/`, `shell-snapshots/`, `sessions/`, `session-env/`, `tasks/`, `plans/`, `file-history/`, `paste-cache/`, `history.jsonl` | bind |
-| `~/.claude/skills/` on the host | Custom skills, shared with the host's Claude Code install | bind |
+| Docker named volume `claude-code-global` | `~/.claude.json`、認証情報、設定、プラグイン、キャッシュなど — プロジェクト固有リストに**含まれない**もの全て | volume（同じマシン上の全プロジェクトで共有） |
+| プロジェクト内の `./.devcontainer/claude-projects/` | 会話・セッションデータ: `projects/`, `todos/`, `shell-snapshots/`, `sessions/`, `session-env/`, `tasks/`, `plans/`, `file-history/`, `paste-cache/`, `history.jsonl` | bind |
+| ホストの `~/.claude/skills/` | カスタム skills。ホスト側の Claude Code と共有 | bind |
 
-Anything not in the per-project list goes to the shared volume (whitelist approach), so new files introduced by future Claude Code updates default to the safer machine-wide side.
+プロジェクト固有リストに含まれないものは全て共有 volume に入る（ホワイトリスト方式）ため、将来 Claude Code のアップデートで新しいファイルが追加されても、デフォルトで安全側（マシン共通側）に振り分けられます。
 
-## Example Usage
+## 利用例
 
 ```jsonc
 {
     "image": "mcr.microsoft.com/devcontainers/base:debian",
 
-    // Required: create the bind-mount sources on the host before the
-    // container starts. Without this, Docker creates them as root-owned
-    // empty directories.
+    // 必須: bind mount のソースをホスト側にあらかじめ作成する。
+    // 作らないと Docker が root 所有の空ディレクトリを生成してしまう。
     "initializeCommand": "mkdir -p ${localWorkspaceFolder}/.devcontainer/claude-projects ${localEnv:HOME}/.claude/skills",
 
     "features": {
@@ -31,21 +30,21 @@ Anything not in the per-project list goes to the shared volume (whitelist approa
 }
 ```
 
-## Required Setup
+## 必要なセットアップ
 
-1. **Add the `initializeCommand` shown above** to your `devcontainer.json`.
-   Without it, Docker creates the bind-mount source directories as `root`
-   on first run and the container user can't write to them.
-2. **Add `.devcontainer/claude-projects/` to `.gitignore`.** Conversation
-   logs contain code snippets, file paths, and arbitrary prompt content
-   that you almost certainly do not want committed.
+1. **上記の `initializeCommand` を `devcontainer.json` に追加してください**。
+   これを設定しないと、初回起動時に Docker が bind mount のソースディレクトリを
+   `root` 所有で作成してしまい、コンテナユーザーから書き込めなくなります。
+2. **`.devcontainer/claude-projects/` を `.gitignore` に追加してください**。
+   会話ログにはコードスニペット、ファイルパス、任意のプロンプト入力が含まれるため、
+   ほぼ確実にコミットしたくない内容です。
 
-## Windows host
+## Windows ホスト
 
-The `initializeCommand` and the third mount use `${localEnv:HOME}`, which is
-not defined on Windows. Windows users should replace `HOME` with `USERPROFILE`
-or use WSL.
+`initializeCommand` と 3 つめのマウントは `${localEnv:HOME}` を参照していますが、これは
+Windows では定義されていません。Windows ユーザーは `HOME` を `USERPROFILE` に置き換えるか、
+WSL を利用してください。
 
 ## Options
 
-None.
+なし。
