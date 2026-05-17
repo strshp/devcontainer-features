@@ -30,7 +30,7 @@ Claude Code の状態をコンテナ再ビルド越しに永続化する Feature
 
 ## git について
 
-会話ログをコミットしないために、feature が `.devcontainer/claude-projects/.gitignore` を自動生成します（中身は `*` と `!.gitignore`）。これでリポジトリのルート `.gitignore` を編集することなく、配下のすべてのファイルが git から除外されます。
+会話ログをコミットしないために、feature が `.devcontainer/claude-projects/.gitignore` を自動生成します（中身は `*` の 1 行のみ）。これでリポジトリのルート `.gitignore` を編集することなく、`.gitignore` 自身も含めて配下のすべてのファイルが git から見えなくなります。
 
 ## 前提
 

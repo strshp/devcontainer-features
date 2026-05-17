@@ -66,12 +66,10 @@ done
 touch "$PROJECTS_DIR/history.jsonl"
 
 # Keep claude-projects out of git without polluting the repo's root .gitignore.
-# The nested .gitignore excludes everything in this directory except itself.
+# Just "*" excludes everything in this directory, including the .gitignore
+# itself — it stays invisible to git status entirely.
 if [ ! -f "$PROJECTS_DIR/.gitignore" ]; then
-    cat > "$PROJECTS_DIR/.gitignore" <<'GITIGN'
-*
-!.gitignore
-GITIGN
+    printf '*\n' > "$PROJECTS_DIR/.gitignore"
 fi
 
 chown -R "$TARGET_USER" "$PROJECTS_DIR"                                  2>/dev/null || true
