@@ -26,7 +26,7 @@ Anything not in the per-project list goes to the shared volume (whitelist approa
 
     "features": {
         "ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {},
-        "ghcr.io/strshp/dev-container-features/claude-code-persist:1": {}
+        "ghcr.io/strshp/devcontainer-features/claude-code-persist:1": {}
     }
 }
 ```
