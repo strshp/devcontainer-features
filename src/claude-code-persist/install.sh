@@ -50,4 +50,26 @@ ln -sfn "$HOST_SETTINGS_LOCAL_FILE" "$GLOBAL_DIR/settings.local.json"
 chown -hR "$USER_NAME:$USER_NAME" "$GLOBAL_DIR" 2>/dev/null || true
 chown -h  "$USER_NAME:$USER_NAME" "$USER_HOME/.claude" "$USER_HOME/.claude.json" 2>/dev/null || true
 
+# A runtime init helper for postCreateCommand. Materializes the bind-mount
+# subdirs and fixes ownership on every bind-mounted path so the feature
+# works whether the host paths were created via initializeCommand, by hand,
+# or auto-created by Docker as root.
+cat > /usr/local/bin/claude-code-persist-init <<'INITSH'
+#!/bin/sh
+set -e
+TARGET_USER="${SUDO_USER:-$(id -un)}"
+
+PROJECTS_DIR=/var/claude-code-projects
+for s in projects todos shell-snapshots sessions session-env tasks plans file-history paste-cache; do
+    mkdir -p "$PROJECTS_DIR/$s"
+done
+touch "$PROJECTS_DIR/history.jsonl"
+
+chown -R "$TARGET_USER" "$PROJECTS_DIR"                                  2>/dev/null || true
+chown -R "$TARGET_USER" /var/claude-code-host-skills                     2>/dev/null || true
+chown    "$TARGET_USER" /var/claude-code-host-settings.json              2>/dev/null || true
+chown    "$TARGET_USER" /var/claude-code-host-settings.local.json        2>/dev/null || true
+INITSH
+chmod 755 /usr/local/bin/claude-code-persist-init
+
 echo "Claude Code persistence wired up for user '$USER_NAME' at '$USER_HOME'"

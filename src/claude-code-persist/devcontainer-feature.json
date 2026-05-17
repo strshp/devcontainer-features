@@ -1,7 +1,7 @@
 {
     "name": "Claude Code Persistence",
     "id": "claude-code-persist",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "Persists Claude Code state across container rebuilds. Stores credentials and machine-wide settings in a shared named volume, conversation/session data in the project's .devcontainer/ directory, and bind-mounts the host's ~/.claude/skills plus settings.json/settings.local.json so they're shared with the host's Claude Code install.",
     "installsAfter": [
         "ghcr.io/anthropics/devcontainer-features/claude-code"
@@ -33,5 +33,5 @@
             "type": "bind"
         }
     ],
-    "postCreateCommand": "mkdir -p /var/claude-code-projects/projects /var/claude-code-projects/todos /var/claude-code-projects/shell-snapshots /var/claude-code-projects/sessions /var/claude-code-projects/session-env /var/claude-code-projects/tasks /var/claude-code-projects/plans /var/claude-code-projects/file-history /var/claude-code-projects/paste-cache && touch /var/claude-code-projects/history.jsonl"
+    "postCreateCommand": "sudo -n /usr/local/bin/claude-code-persist-init"
 }
