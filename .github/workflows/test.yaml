@@ -94,4 +94,6 @@ jobs:
           set -e
           test -f /tmp/cc-test/.devcontainer/claude-projects/projects/.persist-test
           grep -q hello /tmp/cc-test/.devcontainer/claude-projects/projects/.persist-test
+          test -f /tmp/cc-test/.devcontainer/claude-projects/.gitignore
+          grep -q '^\*$' /tmp/cc-test/.devcontainer/claude-projects/.gitignore
           echo "Host-side bind mount verified."

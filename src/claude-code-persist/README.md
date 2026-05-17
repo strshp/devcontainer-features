@@ -26,11 +26,11 @@ Claude Code の状態をコンテナ再ビルド越しに永続化する Feature
 }
 ```
 
-`ghcr.io/anthropics/devcontainer-features/claude-code` は `dependsOn` で自動的に取り込まれるため、明示的に書く必要はありません。必要な初期化（bind mount 配下のサブディレクトリ作成、所有権の補正）は `postCreateCommand` 内で自動実行されます。
+`ghcr.io/anthropics/devcontainer-features/claude-code` は `dependsOn` で自動的に取り込まれるため、明示的に書く必要はありません。必要な初期化（bind mount 配下のサブディレクトリ作成、所有権の補正、`.gitignore` の配置）は `postCreateCommand` 内で自動実行されます。
 
-## 推奨設定（必須ではありません）
+## git について
 
-`.devcontainer/claude-projects/` を `.gitignore` に追加してください。会話ログにはコードスニペット、ファイルパス、任意のプロンプト入力が含まれるため、ほぼ確実にコミットしたくない内容です。
+会話ログをコミットしないために、feature が `.devcontainer/claude-projects/.gitignore` を自動生成します（中身は `*` と `!.gitignore`）。これでリポジトリのルート `.gitignore` を編集することなく、配下のすべてのファイルが git から除外されます。
 
 ## 前提
 

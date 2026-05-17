@@ -65,6 +65,15 @@ for s in projects todos shell-snapshots sessions session-env tasks plans file-hi
 done
 touch "$PROJECTS_DIR/history.jsonl"
 
+# Keep claude-projects out of git without polluting the repo's root .gitignore.
+# The nested .gitignore excludes everything in this directory except itself.
+if [ ! -f "$PROJECTS_DIR/.gitignore" ]; then
+    cat > "$PROJECTS_DIR/.gitignore" <<'GITIGN'
+*
+!.gitignore
+GITIGN
+fi
+
 chown -R "$TARGET_USER" "$PROJECTS_DIR"                                  2>/dev/null || true
 chown -R "$TARGET_USER" /var/claude-code-host-skills                     2>/dev/null || true
 chown    "$TARGET_USER" /var/claude-code-host-settings.json              2>/dev/null || true
