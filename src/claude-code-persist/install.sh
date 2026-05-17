@@ -6,6 +6,8 @@ echo "Activating feature 'claude-code-persist'"
 GLOBAL_DIR=/var/claude-code-global
 PROJECTS_DIR=/var/claude-code-projects
 HOST_SKILLS_DIR=/var/claude-code-host-skills
+HOST_SETTINGS_FILE=/var/claude-code-host-settings.json
+HOST_SETTINGS_LOCAL_FILE=/var/claude-code-host-settings.local.json
 
 USER_NAME="${_REMOTE_USER:-root}"
 USER_HOME="${_REMOTE_USER_HOME:-/root}"
@@ -38,6 +40,11 @@ done
 # Host's ~/.claude/skills shared into the container.
 rm -rf "$GLOBAL_DIR/skills"
 ln -sfn "$HOST_SKILLS_DIR" "$GLOBAL_DIR/skills"
+
+# Host's ~/.claude/settings.json and settings.local.json shared into the container.
+rm -f "$GLOBAL_DIR/settings.json" "$GLOBAL_DIR/settings.local.json"
+ln -sfn "$HOST_SETTINGS_FILE"       "$GLOBAL_DIR/settings.json"
+ln -sfn "$HOST_SETTINGS_LOCAL_FILE" "$GLOBAL_DIR/settings.local.json"
 
 # Ownership: -h so the symlinks themselves are chowned (not their targets).
 chown -hR "$USER_NAME:$USER_NAME" "$GLOBAL_DIR" 2>/dev/null || true

@@ -42,6 +42,7 @@ jobs:
           WS=/tmp/cc-test
           mkdir -p "$WS/.devcontainer/claude-projects"
           mkdir -p "$HOME/.claude/skills"
+          touch "$HOME/.claude/settings.json" "$HOME/.claude/settings.local.json"
           cp -r src/claude-code-persist "$WS/.devcontainer/"
           cat > "$WS/.devcontainer/devcontainer.json" <<'JSON'
           {
@@ -75,6 +76,11 @@ jobs:
 
             test -L /var/claude-code-global/skills                                                   || fail "skills is not a symlink"
             [ "$(readlink /var/claude-code-global/skills)" = "/var/claude-code-host-skills" ]        || fail "skills target wrong"
+
+            test -L /var/claude-code-global/settings.json                                            || fail "settings.json is not a symlink"
+            [ "$(readlink /var/claude-code-global/settings.json)" = "/var/claude-code-host-settings.json" ]             || fail "settings.json target wrong"
+            test -L /var/claude-code-global/settings.local.json                                      || fail "settings.local.json is not a symlink"
+            [ "$(readlink /var/claude-code-global/settings.local.json)" = "/var/claude-code-host-settings.local.json" ] || fail "settings.local.json target wrong"
 
             echo hello > /home/vscode/.claude/projects/.persist-test
             test -f /var/claude-code-projects/projects/.persist-test                                 || fail "write did not reach project bind mount"
