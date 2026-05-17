@@ -1,0 +1,15 @@
+{
+    "with_non_root_user": {
+        "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+        "features": {
+            "ghcr.io/devcontainers/features/common-utils:2": {
+                "installZsh": false,
+                "installOhMyZsh": false,
+                "upgradePackages": false,
+                "username": "octocat"
+            },
+            "gh-persist": {}
+        },
+        "remoteUser": "octocat"
+    }
+}
