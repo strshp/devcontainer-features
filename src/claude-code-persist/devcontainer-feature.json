@@ -1,11 +1,11 @@
 {
     "name": "Claude Code Persistence",
     "id": "claude-code-persist",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "description": "Persists Claude Code state across container rebuilds. Stores credentials and machine-wide settings in a shared named volume, conversation/session data in the project's .devcontainer/ directory, and bind-mounts the host's ~/.claude/skills plus settings.json/settings.local.json so they're shared with the host's Claude Code install.",
-    "installsAfter": [
-        "ghcr.io/anthropics/devcontainer-features/claude-code"
-    ],
+    "dependsOn": {
+        "ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {}
+    },
     "mounts": [
         {
             "source": "claude-code-global",

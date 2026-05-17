@@ -21,13 +21,12 @@ Claude Code の状態をコンテナ再ビルド越しに永続化する Feature
 {
     "image": "mcr.microsoft.com/devcontainers/base:debian",
     "features": {
-        "ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {},
         "ghcr.io/strshp/devcontainer-features/claude-code-persist:1": {}
     }
 }
 ```
 
-feature を有効化するだけで、必要な初期化は `postCreateCommand` 内で自動実行されます（bind mount 配下のサブディレクトリ作成、所有権の補正）。
+`ghcr.io/anthropics/devcontainer-features/claude-code` は `dependsOn` で自動的に取り込まれるため、明示的に書く必要はありません。必要な初期化（bind mount 配下のサブディレクトリ作成、所有権の補正）は `postCreateCommand` 内で自動実行されます。
 
 ## 推奨設定（必須ではありません）
 
