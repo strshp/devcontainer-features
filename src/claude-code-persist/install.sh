@@ -35,6 +35,16 @@ set -e
 TARGET_USER="${SUDO_USER:-$(id -un)}"
 WORKSPACE_FOLDER="${1:-}"
 
+# Ensure the container hostname resolves. With network_mode: host (or a custom
+# hostname) the container inherits a hostname that is not in /etc/hosts, which
+# makes sudo and other tools emit "unable to resolve host" and can break later
+# postCreateCommands. Running as root here, we add a loopback entry so every
+# subsequent sudo call (including other features') resolves cleanly.
+HN="$(hostname)"
+if [ -n "$HN" ] && ! grep -qw "$HN" /etc/hosts 2>/dev/null; then
+    printf '127.0.0.1\t%s\n' "$HN" >> /etc/hosts
+fi
+
 GLOBAL_DIR=/var/claude-code-global
 PROJECTS_DIR=/var/claude-code-projects
 HOST_SKILLS_DIR=/var/claude-code-host-skills
