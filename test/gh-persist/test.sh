@@ -14,6 +14,9 @@ HOST_CONFIG=/var/gh-host-config
 # Mount target must exist (Docker creates it on mount).
 check "host config mount target exists" test -d "$HOST_CONFIG"
 
+# gh itself is installed automatically via the github-cli dependency (dependsOn).
+check "gh is installed" bash -c 'command -v gh >/dev/null'
+
 # gh is pointed at the host bind mount via GH_CONFIG_DIR (no symlink needed).
 check "GH_CONFIG_DIR -> host mount" bash -c '[ "$GH_CONFIG_DIR" = "/var/gh-host-config" ]'
 
