@@ -1,16 +1,18 @@
 #!/bin/bash
 
-# Scenario: a non-root remoteUser (octocat). Verifies the symlink lands
-# in the user's home, not /root.
+# Scenario: a non-root remoteUser (octocat). Verifies gh is pointed at the host
+# bind mount via GH_CONFIG_DIR and that the directory is writable by that user
+# (gh-persist-init chowns it when Docker created the mount target as root).
 
 set -e
 
 source dev-container-features-test-lib
 
-USER_HOME=/home/octocat
-HOST_CONFIG=/var/gh-host-config
-
-check "~/.config/gh is a symlink"  test -L "$USER_HOME/.config/gh"
-check "~/.config/gh -> host mount" bash -c "[ \"\$(readlink $USER_HOME/.config/gh)\" = \"$HOST_CONFIG\" ]"
+check "running as octocat"           bash -c '[ "$(id -un)" = "octocat" ]'
+check "GH_CONFIG_DIR -> host mount"  bash -c '[ "$GH_CONFIG_DIR" = "/var/gh-host-config" ]'
+check "config dir writable by user"  bash -c '
+    echo "test" > "$GH_CONFIG_DIR/.persist-test-octocat" &&
+    test -f /var/gh-host-config/.persist-test-octocat
+'
 
 reportResults

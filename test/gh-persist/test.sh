@@ -3,7 +3,7 @@
 # Default test: runs against an auto-generated devcontainer.json with the
 # gh-persist feature and no options. remoteUser defaults to root.
 #
-# Verifies that install.sh wired up the symlink correctly inside the container.
+# Verifies that the feature points gh at the host bind mount via GH_CONFIG_DIR.
 
 set -e
 
@@ -14,14 +14,12 @@ HOST_CONFIG=/var/gh-host-config
 # Mount target must exist (Docker creates it on mount).
 check "host config mount target exists" test -d "$HOST_CONFIG"
 
-# ~/.config/gh should be a symlink pointing to the host bind mount.
-check "~/.config/gh is a symlink"     test -L /root/.config/gh
-check "~/.config/gh -> host mount"    bash -c '[ "$(readlink /root/.config/gh)" = "/var/gh-host-config" ]'
+# gh is pointed at the host bind mount via GH_CONFIG_DIR (no symlink needed).
+check "GH_CONFIG_DIR -> host mount" bash -c '[ "$GH_CONFIG_DIR" = "/var/gh-host-config" ]'
 
-# Functional check: writing through ~/.config/gh lands on the host bind mount.
+# Functional check: writing into the config dir lands on the host bind mount.
 check "write reaches host mount" bash -c '
-    mkdir -p /root/.config/gh &&
-    echo "test" > /root/.config/gh/.persist-test &&
+    echo "test" > "$GH_CONFIG_DIR/.persist-test" &&
     test -f /var/gh-host-config/.persist-test
 '
 
