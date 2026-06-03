@@ -3,45 +3,42 @@
 # Default test: runs against an auto-generated devcontainer.json with the
 # claude-code-persist feature and no options. remoteUser defaults to root.
 #
-# This verifies that install.sh wired up the symlinks correctly inside the
-# container. End-to-end data persistence across rebuilds is exercised by
-# the devcontainer-cli test harness itself when it rebuilds the container.
+# Verifies the wiring: ~/.claude is the per-repo store (inside the workspace's
+# .devcontainer/), and ~/.claude.json plus the host-shared config/credential
+# items point at the host mount.
 
 set -e
 
 source dev-container-features-test-lib
 
-GLOBAL=/var/claude-code-global
-PROJECTS=/var/claude-code-projects
-SKILLS=/var/claude-code-host-skills
+HOST=/var/claude-code-host
 
-# Mount targets must exist (Docker creates them on mount).
-check "global mount target exists"   test -d "$GLOBAL"
-check "projects mount target exists" test -d "$PROJECTS"
-check "skills mount target exists"   test -d "$SKILLS"
+# Host mount target must exist (host's ~/.claude is bind-mounted here).
+check "host mount target exists"        test -d "$HOST"
 
-# ~/.claude and ~/.claude.json should be symlinks into the global volume.
-check "~/.claude is a symlink"       test -L /root/.claude
-check "~/.claude.json is a symlink"  test -L /root/.claude.json
-check "~/.claude -> global"          bash -c '[ "$(readlink /root/.claude)" = "/var/claude-code-global" ]'
-check "~/.claude.json -> global"     bash -c '[ "$(readlink /root/.claude.json)" = "/var/claude-code-global/.claude.json" ]'
+# ~/.claude is the per-repo store, created inside the workspace's .devcontainer.
+check "~/.claude is a symlink"          test -L /root/.claude
+check "~/.claude -> workspace store"    bash -c '[[ "$(readlink /root/.claude)" == */.devcontainer/claude-store ]]'
+check "store dir exists"                test -d /root/.claude
 
-# Each project-scoped entry inside the global volume should be a symlink
-# pointing into the project bind mount.
-for name in projects todos shell-snapshots sessions session-env tasks plans file-history paste-cache history.jsonl; do
-    check "$name is a symlink"       test -L "$GLOBAL/$name"
-    check "$name -> project mount"   bash -c "[ \"\$(readlink $GLOBAL/$name)\" = \"$PROJECTS/$name\" ]"
+# ~/.claude.json is shared from the host (it lives at the home root).
+check "~/.claude.json -> host"          bash -c '[ "$(readlink /root/.claude.json)" = "/var/claude-code-host-claude-json" ]'
+
+# Host-shared items: symlinks inside the store pointing at the host mount.
+for item in .credentials.json settings.json settings.local.json keybindings.json CLAUDE.md skills commands agents output-styles rules workflows themes plugins; do
+    check "$item -> host"               bash -c "[ \"\$(readlink /root/.claude/$item)\" = \"$HOST/$item\" ]"
 done
 
-# skills should be a symlink to the host-skills bind mount.
-check "skills is a symlink"          test -L "$GLOBAL/skills"
-check "skills -> host mount"         bash -c '[ "$(readlink /var/claude-code-global/skills)" = "/var/claude-code-host-skills" ]'
-
-# Functional check: writing through ~/.claude/projects lands on the project bind mount.
-check "write reaches project mount" bash -c '
+# Runtime state defaults to the per-repo store. (Safe: writes only into the
+# store under the workspace, never the host's real ~/.claude.)
+check "runtime write stays in store" bash -c '
+    mkdir -p /root/.claude/projects &&
     echo hello > /root/.claude/projects/.persist-test &&
-    test -f /var/claude-code-projects/projects/.persist-test &&
-    grep -q hello /var/claude-code-projects/projects/.persist-test
+    test -f /root/.claude/projects/.persist-test
 '
+
+# NOTE: we deliberately do NOT write through a host-shared symlink here; the
+# host mount is the real ~/.claude when this runs locally. Host wiring is
+# covered structurally by the readlink checks above.
 
 reportResults

@@ -3,17 +3,22 @@
 
 Claude Code の状態をコンテナ再ビルド越しに永続化する Feature です。
 
-状態を 3 つのマウントに分けて保存します：
+状態を **2 つのバケツ**に決め打ちで振り分けます。
 
-| 保存先 | 中身 | マウント種別 |
+| バケツ | 中身 | 保存先 |
 |---|---|---|
-| Docker named volume `claude-code-global` | `~/.claude.json`、認証情報、設定、プラグイン、キャッシュなど — プロジェクト固有リストに**含まれない**もの全て | volume（同じマシン上の全プロジェクトで共有） |
-| プロジェクト内の `./.devcontainer/claude-projects/` | 会話・セッションデータ: `projects/`, `todos/`, `shell-snapshots/`, `sessions/`, `session-env/`, `tasks/`, `plans/`, `file-history/`, `paste-cache/`, `history.jsonl` | bind |
-| ホストの `~/.claude/skills/` | カスタム skills | bind |
-| ホストの `~/.claude/settings.json` | ユーザー設定 | bind（単一ファイル） |
-| ホストの `~/.claude/settings.local.json` | ユーザー設定（ローカル上書き） | bind（単一ファイル） |
+| **ホスト共有**（ID＋設定） | `.credentials.json`（OAuth トークン）, `~/.claude.json`, `settings.json`, `settings.local.json`, `CLAUDE.md`, `keybindings.json`, `skills/`, `commands/`, `agents/`, `output-styles/`, `rules/`, `workflows/`, `themes/`, `plugins/` | ホストの `~/.claude`（＋ `~/.claude.json`）を bind マウントしてミラー |
+| **リポジトリ単位**（実行時状態すべて） | 会話・セッション（`projects/`, `history.jsonl`, `sessions/`, `session-env/`, `todos/`, `tasks/`, `plans/`, `file-history/`, `paste-cache/`, `shell-snapshots/`）とキャッシュ（`cache/`, `statsig/`, `ide/`, `logs/` …）、その他**上のリストに無いものすべて** | プロジェクト内の `./.devcontainer/claude-store/` |
 
-プロジェクト固有リストに含まれないものは全て共有 volume に入る（ホワイトリスト方式）ため、将来 Claude Code のアップデートで新しいファイルが追加されても、デフォルトで安全側（マシン共通側）に振り分けられます。
+## 仕組み
+
+`~/.claude` 自体を **リポジトリ単位ストアへの symlink** にしています。そのため Claude Code が書く実行時ファイルは（将来増える未知のファイルも含めて）デフォルトでリポジトリ単位ストアに落ちます。その上で「ホスト共有」項目だけをホストの `~/.claude` へ symlink で上書きします。`~/.claude.json` は home 直下にあるため、ホストの同ファイルへ個別に symlink します。
+
+- ホストでログイン済みなら、全コンテナでログイン済み（`.credentials.json` 共有）。
+- 設定・skills・plugins などはホストと単一ソース。ホストで編集すればコンテナにも反映。
+- 会話履歴・auto-memory・キャッシュはリポジトリごとに分離。`--resume` に必要なセッション系も保持。
+
+配線はすべて `postCreateCommand`（ランタイム）で行い、コンテナユーザーは `SUDO_USER` から判定します（ビルド時 `_REMOTE_USER` には依存しません）。
 
 ## 利用例
 
@@ -21,30 +26,34 @@ Claude Code の状態をコンテナ再ビルド越しに永続化する Feature
 {
     "image": "mcr.microsoft.com/devcontainers/base:debian",
     "features": {
-        "ghcr.io/strshp/devcontainer-features/claude-code-persist:1": {}
+        "ghcr.io/strshp/devcontainer-features/claude-code-persist": {}
     }
 }
 ```
 
-`ghcr.io/anthropics/devcontainer-features/claude-code` は `dependsOn` で自動的に取り込まれるため、明示的に書く必要はありません。必要な初期化（bind mount 配下のサブディレクトリ作成、所有権の補正、`.gitignore` の配置）は `postCreateCommand` 内で自動実行されます。
+`ghcr.io/anthropics/devcontainer-features/claude-code` は `dependsOn` で自動的に取り込まれます。
 
 ## git について
 
-feature が以下の 2 つの `.gitignore` を自動生成します：
+Feature が以下の `.gitignore` を自動生成します（リポジトリのルート `.gitignore` は触りません）。
 
-- `.devcontainer/claude-projects/.gitignore` — 中身は `*` の 1 行のみ。`.gitignore` 自身も含めて配下のすべてのファイルが git から見えなくなる
-- `.devcontainer/.gitignore` — `devcontainer-lock.json` と `.gitignore` 自身の行を追加（既存ファイルがあれば不足分を冪等に追記、なければ新規作成）。`.gitignore` 自身を含めることで、このファイル自体も git から見えなくなる
+- `.devcontainer/claude-store/.gitignore` — 中身は `*` の 1 行。`.gitignore` 自身も含め配下すべてを git から不可視にする。
+- `.devcontainer/.gitignore` — `claude-store/`, `devcontainer-lock.json`, `.gitignore` 自身を冪等に追記。
 
-リポジトリのルート `.gitignore` を編集することなく、会話ログと devcontainer の lock ファイルを git 管理から除外できます。
+> リポジトリの `.devcontainer/claude-store/` には、ホスト設定へ向く symlink が並びます（git からは不可視）。**トークン本体はホストの `~/.claude` に残り、リポジトリに入るのは symlink だけ**なので秘密は漏れません。
 
-## 前提
+## 前提・注意
 
-- **`sudo` が利用可能であること**（コンテナ remoteUser がパスワードなしで sudo できる前提）。`mcr.microsoft.com/devcontainers/base:*` などの標準 devcontainer イメージはこの条件を満たします。
+- **`sudo` がパスワードなしで使えること**（標準 devcontainer イメージは満たす）。
+- **ホストに `~/.claude` と `~/.claude.json` が存在すること**（一度でもホストで Claude Code を起動していれば作られます）。これらは bind マウントの source なので、無いと Docker デーモンによってはコンテナ起動に失敗します（root 所有で自動作成するデーモンの場合のみ Feature が利用ユーザーへ chown して緩和）。
+- `.credentials.json` をホスト共有しているため、トークン refresh がホストと競合し得ます（通常は問題になりません）。
+
+> 補足: per-repo ストア（`.devcontainer/claude-store`）は**独立した bind マウントにはしていません**。workspace は常にマウントされるので、その中に `postCreateCommand` でストアを作成します。これにより「マウント元が存在しないと起動失敗」（`devcontainer up`/CLI で再現）を回避しています。
 
 ## Windows ホスト
 
-`skills` / `settings.json` / `settings.local.json` のマウントは `${localEnv:HOME}` を参照していますが、これは Windows では定義されていません。Windows ユーザーは WSL の利用を推奨します。
+`${localEnv:HOME}` は Windows では未定義です。Windows ユーザーは WSL の利用を推奨します。
 
 ## Options
 
-なし。
+なし（全項目を決め打ち）。

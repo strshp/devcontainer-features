@@ -1,35 +1,20 @@
 {
     "name": "Claude Code Persistence",
     "id": "claude-code-persist",
-    "version": "1.1.1",
-    "description": "Persists Claude Code state across container rebuilds and across different DevContainers. Stores credentials and machine-wide settings in a host bind mount (~/.config/claude-code-persist), conversation/session data in the project's .devcontainer/ directory, and bind-mounts the host's ~/.claude/skills plus settings.json/settings.local.json so they're shared with the host's Claude Code install.",
+    "version": "2.0.0",
+    "description": "Persists Claude Code state across container rebuilds and across DevContainers. Identity and config (credentials, .claude.json, settings, skills, commands, agents, CLAUDE.md, plugins, ...) are shared with the host's ~/.claude; all per-session and runtime state (conversation history, auto-memory, caches) is kept in the project's .devcontainer/ so it is scoped per repository.",
     "dependsOn": {
         "ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {}
     },
     "mounts": [
         {
-            "source": "${localEnv:HOME}/.config/claude-code-persist",
-            "target": "/var/claude-code-global",
+            "source": "${localEnv:HOME}/.claude",
+            "target": "/var/claude-code-host",
             "type": "bind"
         },
         {
-            "source": "${localWorkspaceFolder}/.devcontainer/claude-projects",
-            "target": "/var/claude-code-projects",
-            "type": "bind"
-        },
-        {
-            "source": "${localEnv:HOME}/.claude/skills",
-            "target": "/var/claude-code-host-skills",
-            "type": "bind"
-        },
-        {
-            "source": "${localEnv:HOME}/.claude/settings.json",
-            "target": "/var/claude-code-host-settings.json",
-            "type": "bind"
-        },
-        {
-            "source": "${localEnv:HOME}/.claude/settings.local.json",
-            "target": "/var/claude-code-host-settings.local.json",
+            "source": "${localEnv:HOME}/.claude.json",
+            "target": "/var/claude-code-host-claude-json",
             "type": "bind"
         }
     ],

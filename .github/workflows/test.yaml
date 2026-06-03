@@ -40,13 +40,18 @@ jobs:
         run: |
           set -e
           WS=/tmp/cc-test
-          mkdir -p "$WS/.devcontainer/claude-projects"
-          mkdir -p "$HOME/.claude/skills"
-          touch "$HOME/.claude/settings.json" "$HOME/.claude/settings.local.json"
+          mkdir -p "$WS/.devcontainer"
+          # Host-shared config + credentials are bind sources -> must exist on host.
+          mkdir -p "$HOME/.claude/skills" "$HOME/.claude/commands" "$HOME/.claude/agents" \
+                   "$HOME/.claude/output-styles" "$HOME/.claude/rules" "$HOME/.claude/workflows" \
+                   "$HOME/.claude/themes" "$HOME/.claude/plugins"
+          touch "$HOME/.claude/settings.json" "$HOME/.claude/settings.local.json" \
+                "$HOME/.claude/keybindings.json" "$HOME/.claude/CLAUDE.md" \
+                "$HOME/.claude/.credentials.json" "$HOME/.claude.json"
           cp -r src/claude-code-persist "$WS/.devcontainer/"
           cat > "$WS/.devcontainer/devcontainer.json" <<'JSON'
           {
-              "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+              "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
               "features": { "./claude-code-persist": {} },
               "remoteUser": "vscode"
           }
@@ -56,35 +61,36 @@ jobs:
         working-directory: /tmp/cc-test
         run: devcontainer up --workspace-folder .
 
-      - name: "Verify symlinks and functional persistence inside container"
+      - name: "Verify wiring and functional persistence inside container"
         working-directory: /tmp/cc-test
         run: |
           devcontainer exec --workspace-folder . bash -c '
             set -e
-
             fail() { echo "FAIL: $1"; exit 1; }
+            HOST=/var/claude-code-host
 
-            test -L /home/vscode/.claude       || fail "/home/vscode/.claude is not a symlink"
-            test -L /home/vscode/.claude.json  || fail "/home/vscode/.claude.json is not a symlink"
-            [ "$(readlink /home/vscode/.claude)"      = "/var/claude-code-global" ]              || fail "~/.claude target wrong"
-            [ "$(readlink /home/vscode/.claude.json)" = "/var/claude-code-global/.claude.json" ] || fail "~/.claude.json target wrong"
+            # ~/.claude is the per-repo store inside the workspace .devcontainer.
+            test -L /home/vscode/.claude || fail "~/.claude is not a symlink"
+            case "$(readlink /home/vscode/.claude)" in
+              */.devcontainer/claude-store) : ;;
+              *) fail "~/.claude target wrong: $(readlink /home/vscode/.claude)" ;;
+            esac
+            test -d /home/vscode/.claude || fail "store dir missing"
 
-            for n in projects todos shell-snapshots sessions session-env tasks plans file-history paste-cache history.jsonl; do
-              test -L "/var/claude-code-global/$n"                                                   || fail "missing symlink: $n"
-              [ "$(readlink /var/claude-code-global/$n)" = "/var/claude-code-projects/$n" ]          || fail "symlink target wrong: $n"
+            # ~/.claude.json shared from host.
+            test -L /home/vscode/.claude.json || fail "~/.claude.json is not a symlink"
+            [ "$(readlink /home/vscode/.claude.json)" = "/var/claude-code-host-claude-json" ] || fail "~/.claude.json target wrong"
+
+            # Host-shared config + credential items point at the host mount.
+            for n in .credentials.json settings.json settings.local.json keybindings.json CLAUDE.md \
+                     skills commands agents output-styles rules workflows themes plugins; do
+              [ "$(readlink /home/vscode/.claude/$n)" = "$HOST/$n" ] || fail "host-shared symlink wrong: $n"
             done
 
-            test -L /var/claude-code-global/skills                                                   || fail "skills is not a symlink"
-            [ "$(readlink /var/claude-code-global/skills)" = "/var/claude-code-host-skills" ]        || fail "skills target wrong"
-
-            test -L /var/claude-code-global/settings.json                                            || fail "settings.json is not a symlink"
-            [ "$(readlink /var/claude-code-global/settings.json)" = "/var/claude-code-host-settings.json" ]             || fail "settings.json target wrong"
-            test -L /var/claude-code-global/settings.local.json                                      || fail "settings.local.json is not a symlink"
-            [ "$(readlink /var/claude-code-global/settings.local.json)" = "/var/claude-code-host-settings.local.json" ] || fail "settings.local.json target wrong"
-
+            # Runtime state stays in the per-repo store.
+            mkdir -p /home/vscode/.claude/projects
             echo hello > /home/vscode/.claude/projects/.persist-test
-            test -f /var/claude-code-projects/projects/.persist-test                                 || fail "write did not reach project bind mount"
-            grep -q hello /var/claude-code-projects/projects/.persist-test                          || fail "wrong content on project bind mount"
+            grep -q hello /home/vscode/.claude/projects/.persist-test || fail "runtime write failed"
 
             echo "All in-container checks passed."
           '
@@ -92,11 +98,13 @@ jobs:
       - name: "Verify host-side persistence"
         run: |
           set -e
-          test -f /tmp/cc-test/.devcontainer/claude-projects/projects/.persist-test
-          grep -q hello /tmp/cc-test/.devcontainer/claude-projects/projects/.persist-test
-          test -f /tmp/cc-test/.devcontainer/claude-projects/.gitignore
-          grep -q '^\*$' /tmp/cc-test/.devcontainer/claude-projects/.gitignore
-          test -f /tmp/cc-test/.devcontainer/.gitignore
-          grep -qFx 'devcontainer-lock.json' /tmp/cc-test/.devcontainer/.gitignore
-          grep -qFx '.gitignore' /tmp/cc-test/.devcontainer/.gitignore
-          echo "Host-side bind mount verified."
+          WS=/tmp/cc-test
+          test -f "$WS/.devcontainer/claude-store/projects/.persist-test"
+          grep -q hello "$WS/.devcontainer/claude-store/projects/.persist-test"
+          test -f "$WS/.devcontainer/claude-store/.gitignore"
+          grep -q '^\*$' "$WS/.devcontainer/claude-store/.gitignore"
+          test -f "$WS/.devcontainer/.gitignore"
+          grep -qFx 'claude-store/' "$WS/.devcontainer/.gitignore"
+          grep -qFx 'devcontainer-lock.json' "$WS/.devcontainer/.gitignore"
+          grep -qFx '.gitignore' "$WS/.devcontainer/.gitignore"
+          echo "Host-side persistence verified."
