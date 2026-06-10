@@ -13,9 +13,6 @@ HOST=/var/claude-code-host
 check "~/.claude -> workspace store" bash -c "[[ \"\$(readlink $USER_HOME/.claude)\" == */.devcontainer/claude-store ]]"
 check "store dir exists"             test -d "$USER_HOME/.claude"
 check "~/.claude.json -> host"       bash -c "[ \"\$(readlink $USER_HOME/.claude.json)\" = \"/var/claude-code-host-claude-json\" ]"
-# A shared dir and a fabricated file are wired for the non-root user too.
-check "commands -> host"             bash -c "[ \"\$(readlink $USER_HOME/.claude/commands)\" = \"$HOST/commands\" ]"
-check "settings.json -> host"        bash -c "[ \"\$(readlink $USER_HOME/.claude/settings.json)\" = \"$HOST/settings.json\" ]"
 # .credentials.json is shared from the host only when the host actually has it;
 # otherwise the path must not be a dangling symlink (falls back to the store).
 if [ -e "$HOST/.credentials.json" ]; then

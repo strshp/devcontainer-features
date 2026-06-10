@@ -24,45 +24,20 @@ check "store dir exists"                test -d /root/.claude
 # ~/.claude.json is shared from the host (it lives at the home root).
 check "~/.claude.json -> host"          bash -c '[ "$(readlink /root/.claude.json)" = "/var/claude-code-host-claude-json" ]'
 
-# Shared DIRS are always linked to the host: the host dir is created empty when
-# absent, so the link is never dangling and the dir is truly shared.
-for item in skills commands agents output-styles rules workflows themes plugins; do
-    check "$item -> host"               bash -c "[ \"\$(readlink /root/.claude/$item)\" = \"$HOST/$item\" ]"
-    check "$item host dir exists"       test -d "$HOST/$item"
-    check "$item link not dangling"     test -d "/root/.claude/$item"
+# Host-shared items must NEVER be dangling symlinks, and the feature never
+# creates anything on the host. When the host's ~/.claude lacks an item (no
+# CLAUDE.md, commands/, agents/, ...), the path must stay valid (absent, a real
+# per-repo entry, or a symlink whose target exists) so it falls back to the
+# per-repo store. If the host HAS the item, it is a symlink to the host mount,
+# and the item must not have been created on the host by the feature.
+for item in .credentials.json settings.json settings.local.json keybindings.json CLAUDE.md skills commands agents output-styles rules workflows themes plugins; do
+    if [ -e "$HOST/$item" ]; then
+        check "$item -> host"           bash -c "[ \"\$(readlink /root/.claude/$item)\" = \"$HOST/$item\" ]"
+    else
+        check "$item not dangling"      bash -c "[ ! -L \"/root/.claude/$item\" ] || [ -e \"/root/.claude/$item\" ]"
+        check "$item not created on host" bash -c "[ ! -e \"$HOST/$item\" ]"
+    fi
 done
-
-# Shared config FILES are always linked to the host: when the host lacks one it
-# is created with its documented initial state, so the link is never dangling
-# and the file is shared with the host.
-for item in settings.json settings.local.json keybindings.json CLAUDE.md; do
-    check "$item -> host"               bash -c "[ \"\$(readlink /root/.claude/$item)\" = \"$HOST/$item\" ]"
-    check "$item is a regular file"     test -f "/root/.claude/$item"
-done
-
-# Fabricated JSON config has valid, parseable content. Validate with whatever
-# JSON parser the image happens to have (node ships with the claude-code dep);
-# skip the check if none is available rather than fail spuriously.
-if command -v node >/dev/null 2>&1; then
-    JSON_PARSE='node -e "JSON.parse(require(\"fs\").readFileSync(process.argv[1],\"utf8\"))"'
-elif command -v python3 >/dev/null 2>&1; then
-    JSON_PARSE='python3 -c "import json,sys; json.load(open(sys.argv[1]))"'
-else
-    JSON_PARSE=''
-fi
-if [ -n "$JSON_PARSE" ]; then
-    for item in settings.json settings.local.json keybindings.json; do
-        check "$item is valid JSON" sh -c "$JSON_PARSE /root/.claude/$item"
-    done
-fi
-
-# .credentials.json is auth material: never fabricated. Linked only when the
-# host already has it; otherwise the path must not be a dangling symlink.
-if [ -e "$HOST/.credentials.json" ]; then
-    check ".credentials.json -> host" bash -c "[ \"\$(readlink /root/.claude/.credentials.json)\" = \"$HOST/.credentials.json\" ]"
-else
-    check ".credentials.json not dangling" bash -c "[ ! -L \"/root/.claude/.credentials.json\" ] || [ -e \"/root/.claude/.credentials.json\" ]"
-fi
 
 # Runtime state defaults to the per-repo store. (Safe: writes only into the
 # store under the workspace, never the host's real ~/.claude.)
@@ -71,5 +46,17 @@ check "runtime write stays in store" bash -c '
     echo hello > /root/.claude/projects/.persist-test &&
     test -f /root/.claude/projects/.persist-test
 '
+
+# Positive path: once the host gains an item, re-running init links it from the
+# host. Guarded on the file being absent so we never clobber a developer's real
+# ~/.claude on a local run; we remove only what we create.
+if [ ! -e "$HOST/CLAUDE.md" ]; then
+    WORKSPACE="$(dirname "$(dirname "$(readlink /root/.claude)")")"
+    printf '# memory\n' > "$HOST/CLAUDE.md"
+    /usr/local/bin/claude-code-persist-init "$WORKSPACE"
+    check "CLAUDE.md -> host once present" bash -c "[ \"\$(readlink /root/.claude/CLAUDE.md)\" = \"$HOST/CLAUDE.md\" ]"
+    check "CLAUDE.md readable via link"    test -f /root/.claude/CLAUDE.md
+    rm -f "$HOST/CLAUDE.md"
+fi
 
 reportResults
