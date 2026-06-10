@@ -2,7 +2,7 @@
     "name": "GitHub CLI",
     "id": "gh",
     "version": "1.2.1",
-    "description": "Persists GitHub CLI authentication credentials across container rebuilds and different DevContainers. Bind-mounts the host's ~/.config/gh and points gh at it via GH_CONFIG_DIR, so gh auth login only needs to be done once on the host. Installs the GitHub CLI automatically via the github-cli feature.",
+    "description": "GitHub CLI の認証情報をホストの ~/.config/gh と共有して永続化します。gh auth login はホストで一度だけで済みます。",
     "mounts": [
         {
             "source": "${localEnv:HOME}/.config/gh",

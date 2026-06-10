@@ -2,7 +2,7 @@
     "name": "Claude Code",
     "id": "claude-code",
     "version": "2.4.1",
-    "description": "Persists Claude Code state across container rebuilds and across DevContainers. Identity and config (credentials, .claude.json, settings, skills, commands, agents, CLAUDE.md, plugins, ...) are shared with the host's ~/.claude; all per-session and runtime state (conversation history, auto-memory, caches) is kept in the project's .devcontainer/ so it is scoped per repository.",
+    "description": "Claude Code の認証情報・設定をホストの ~/.claude と共有し、会話などの実行時状態をリポジトリ単位で永続化します。",
     "dependsOn": {
         "ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {}
     },
