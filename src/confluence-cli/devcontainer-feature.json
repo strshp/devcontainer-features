@@ -1,0 +1,26 @@
+{
+    "name": "Confluence CLI",
+    "id": "confluence-cli",
+    "version": "1.0.0",
+    "description": "Installs the kci-confluence-cli package from PyPI via uv (providing the `confluence` command) and exposes base_url / user_name / user_password options as the CONFLUENCE_BASE_URL / CONFLUENCE_USER_NAME / CONFLUENCE_USER_PASSWORD environment variables in the container.",
+    "options": {
+        "base_url": {
+            "type": "string",
+            "default": "",
+            "description": "Confluence base URL. Exposed in the container as the CONFLUENCE_BASE_URL environment variable."
+        },
+        "user_name": {
+            "type": "string",
+            "default": "",
+            "description": "Confluence user name. Exposed in the container as the CONFLUENCE_USER_NAME environment variable."
+        },
+        "user_password": {
+            "type": "string",
+            "default": "",
+            "description": "Confluence user password. Exposed in the container as the CONFLUENCE_USER_PASSWORD environment variable. NOTE: this value is written into the container image at build time; do not commit it to a shared devcontainer.json or push the built image."
+        }
+    },
+    "installsAfter": [
+        "ghcr.io/devcontainers/features/common-utils"
+    ]
+}

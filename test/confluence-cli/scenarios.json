@@ -1,0 +1,29 @@
+{
+    "with_options": {
+        "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+        "features": {
+            "confluence-cli": {
+                "base_url": "https://confluence.example.com/confluence",
+                "user_name": "alice",
+                "user_password": "p@ss'w0rd"
+            }
+        }
+    },
+    "with_options_non_root": {
+        "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+        "features": {
+            "ghcr.io/devcontainers/features/common-utils:2": {
+                "installZsh": false,
+                "installOhMyZsh": false,
+                "upgradePackages": false,
+                "username": "octocat"
+            },
+            "confluence-cli": {
+                "base_url": "https://confluence.example.com/confluence",
+                "user_name": "octocat",
+                "user_password": "p@ss'w0rd"
+            }
+        },
+        "remoteUser": "octocat"
+    }
+}
