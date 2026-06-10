@@ -8,7 +8,7 @@
                 "upgradePackages": false,
                 "username": "octocat"
             },
-            "gh-persist": {}
+            "claude-code": {}
         },
         "remoteUser": "octocat"
     }

@@ -2,7 +2,7 @@
 
 # Scenario: a non-root remoteUser (octocat). Verifies gh is pointed at the host
 # bind mount via GH_CONFIG_DIR and that the directory is writable by that user
-# (gh-persist-init chowns it when Docker created the mount target as root).
+# (gh-init chowns it when Docker created the mount target as root).
 
 set -e
 

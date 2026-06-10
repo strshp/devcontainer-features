@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Default test: runs against an auto-generated devcontainer.json with the
-# gh-persist feature and no options. remoteUser defaults to root.
+# gh feature and no options. remoteUser defaults to root.
 #
 # Verifies that the feature points gh at the host bind mount via GH_CONFIG_DIR.
 

@@ -1,14 +1,14 @@
 #!/bin/sh
 set -e
 
-echo "Activating feature 'claude-code-persist'"
+echo "Activating feature 'claude-code'"
 
 # All wiring happens at runtime (postCreateCommand) by the init helper below,
 # where SUDO_USER reliably identifies the container user and the bind mounts
 # exist. We deliberately do NOT create the ~/.claude symlinks here at build
 # time: that would depend on the build-time _REMOTE_USER, which is fragile when
 # the runtime user/home differs.
-cat > /usr/local/bin/claude-code-persist-init <<'INITSH'
+cat > /usr/local/bin/claude-code-init <<'INITSH'
 #!/bin/sh
 set -e
 
@@ -33,7 +33,7 @@ HOST_CLAUDE_JSON=/var/claude-code-host-claude-json  # host's ~/.claude.json (sin
 # Docker daemons, and neither `devcontainer up` nor `features test` pre-creates
 # it. The workspace is always mounted, so we just create the store inside it.
 if [ -z "$WORKSPACE_FOLDER" ]; then
-    echo "claude-code-persist: no workspace folder argument; cannot locate the per-repo store" >&2
+    echo "claude-code: no workspace folder argument; cannot locate the per-repo store" >&2
     exit 1
 fi
 DEVC_DIR="$WORKSPACE_FOLDER/.devcontainer/claude-store"
@@ -103,6 +103,6 @@ if [ -n "$WORKSPACE_FOLDER" ] && [ -d "$WORKSPACE_FOLDER/.devcontainer" ]; then
     fi
 fi
 INITSH
-chmod 755 /usr/local/bin/claude-code-persist-init
+chmod 755 /usr/local/bin/claude-code-init
 
 echo "Claude Code persistence wired up (config + credentials from host ~/.claude; runtime state per-repo)"

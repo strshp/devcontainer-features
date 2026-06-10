@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-echo "Activating feature 'gh-persist'"
+echo "Activating feature 'gh'"
 
 HOST_CONFIG_DIR=/var/gh-host-config
 
@@ -21,7 +21,7 @@ if ! ls /usr/lib/*/libnss_myhostname.so* >/dev/null 2>&1; then
         export DEBIAN_FRONTEND=noninteractive
         apt-get update -y \
             && apt-get install -y --no-install-recommends libnss-myhostname \
-            || echo "gh-persist: could not install libnss-myhostname; sudo may warn 'unable to resolve host' under network_mode: host"
+            || echo "gh: could not install libnss-myhostname; sudo may warn 'unable to resolve host' under network_mode: host"
     fi
 fi
 if [ -f /etc/nsswitch.conf ] && ! grep -q '^hosts:.*myhostname' /etc/nsswitch.conf; then
@@ -41,7 +41,7 @@ fi
 # Docker creates the bind source as root if it does not exist yet; we chown it
 # in that case only, to avoid touching pre-existing host files.
 # ---------------------------------------------------------------------------
-cat > /usr/local/bin/gh-persist-init <<'INITSH'
+cat > /usr/local/bin/gh-init <<'INITSH'
 #!/bin/sh
 set -e
 TARGET_USER="${SUDO_USER:-$(id -un)}"
@@ -56,6 +56,6 @@ if [ "$(stat -c '%u' "$HOST_CONFIG_DIR")" = "0" ]; then
     chown "$TARGET_USER" "$HOST_CONFIG_DIR"
 fi
 INITSH
-chmod 755 /usr/local/bin/gh-persist-init
+chmod 755 /usr/local/bin/gh-init
 
 echo "GitHub CLI credential persistence wired up (GH_CONFIG_DIR=$HOST_CONFIG_DIR)"

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Default test: runs against an auto-generated devcontainer.json with the
-# claude-code-persist feature and no options. remoteUser defaults to root.
+# claude-code feature and no options. remoteUser defaults to root.
 #
 # Verifies the wiring: ~/.claude is the per-repo store (inside the workspace's
 # .devcontainer/), and ~/.claude.json plus the host-shared config/credential

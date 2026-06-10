@@ -1,5 +1,5 @@
 
-# Claude Code Persistence (claude-code-persist)
+# Claude Code Persistence (claude-code)
 
 Claude Code の状態をコンテナ再ビルド越しに永続化する Feature です。
 
@@ -26,7 +26,7 @@ Claude Code の状態をコンテナ再ビルド越しに永続化する Feature
 {
     "image": "mcr.microsoft.com/devcontainers/base:debian",
     "features": {
-        "ghcr.io/strshp/devcontainer-features/claude-code-persist": {}
+        "ghcr.io/strshp/devcontainer-features/claude-code": {}
     }
 }
 ```

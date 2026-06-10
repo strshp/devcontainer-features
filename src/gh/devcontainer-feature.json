@@ -1,6 +1,6 @@
 {
     "name": "GitHub CLI Credential Persistence",
-    "id": "gh-persist",
+    "id": "gh",
     "version": "1.2.0",
     "description": "Persists GitHub CLI authentication credentials across container rebuilds and different DevContainers. Bind-mounts the host's ~/.config/gh and points gh at it via GH_CONFIG_DIR, so gh auth login only needs to be done once on the host. Installs the GitHub CLI automatically via the github-cli feature.",
     "mounts": [
@@ -13,7 +13,7 @@
     "containerEnv": {
         "GH_CONFIG_DIR": "/var/gh-host-config"
     },
-    "postCreateCommand": "sudo -n /usr/local/bin/gh-persist-init",
+    "postCreateCommand": "sudo -n /usr/local/bin/gh-init",
     "dependsOn": {
         "ghcr.io/devcontainers/features/github-cli:1": {}
     }

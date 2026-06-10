@@ -43,7 +43,7 @@ jobs:
             --base-image mcr.microsoft.com/devcontainers/base:ubuntu \
             --project-folder .
 
-  test-claude-code-persist:
+  test-claude-code:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -63,11 +63,11 @@ jobs:
           touch "$HOME/.claude/settings.json" "$HOME/.claude/settings.local.json" \
                 "$HOME/.claude/keybindings.json" "$HOME/.claude/CLAUDE.md" \
                 "$HOME/.claude/.credentials.json" "$HOME/.claude.json"
-          cp -r src/claude-code-persist "$WS/.devcontainer/"
+          cp -r src/claude-code "$WS/.devcontainer/"
           cat > "$WS/.devcontainer/devcontainer.json" <<'JSON'
           {
               "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
-              "features": { "./claude-code-persist": {} },
+              "features": { "./claude-code": {} },
               "remoteUser": "vscode"
           }
           JSON
