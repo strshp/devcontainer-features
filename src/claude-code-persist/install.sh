@@ -41,7 +41,16 @@ DEVC_DIR="$WORKSPACE_FOLDER/.devcontainer/claude-store"
 # Items shared from the host's ~/.claude: identity + portable config.
 # Everything NOT listed here lives in the per-repo store, so unknown/new files
 # Claude Code creates also persist per repository by default.
-HOST_SHARED=".credentials.json settings.json settings.local.json keybindings.json CLAUDE.md skills commands agents output-styles rules workflows themes plugins"
+#
+# Split by kind because the missing-on-host case is handled differently:
+#  - DIRS: created empty on the host when absent, then symlinked. This keeps the
+#    link valid (no dangling) AND makes them genuinely shared — anything created
+#    in a container lands in the host's ~/.claude and shows up everywhere.
+#  - FILES: only linked when the host already has them. Creating an empty file
+#    would be harmful (invalid JSON for settings/keybindings, a bogus empty
+#    .credentials.json), so a missing file falls back to the per-repo store.
+HOST_SHARED_DIRS="skills commands agents output-styles rules workflows themes plugins"
+HOST_SHARED_FILES=".credentials.json settings.json settings.local.json keybindings.json CLAUDE.md"
 
 # --- ownership ---------------------------------------------------------------
 # The host mounts (~/.claude, ~/.claude.json) must already exist on the host: a
@@ -67,13 +76,27 @@ rm -rf "$TARGET_HOME/.claude"
 ln -sfn "$DEVC_DIR" "$TARGET_HOME/.claude"
 
 # Override the host-shared items: point them at the host's ~/.claude.
-# Only link items the host actually has; linking a missing one would create a
-# dangling symlink (e.g. no ~/.claude/CLAUDE.md, commands/, agents/ on the
-# host). For a missing item we leave the per-repo store entry in place so the
-# path stays valid and Claude Code can create it per repository on demand. A
-# stale link from a previous build (host had it, then removed it) is cleaned up
-# so it falls back to the store; a real per-repo entry with data is preserved.
-for item in $HOST_SHARED; do
+#
+# Shared DIRS: ensure the host dir exists (create empty + chown when absent) so
+# the symlink is never dangling and the dir is truly shared with the host. We
+# only chown a dir we just created — never recurse into the user's real,
+# populated ~/.claude on the host.
+for item in $HOST_SHARED_DIRS; do
+    if [ ! -e "$HOST_DIR/$item" ]; then
+        mkdir -p "$HOST_DIR/$item"
+        chown "$TARGET_USER" "$HOST_DIR/$item" 2>/dev/null || true
+    fi
+    rm -rf "$DEVC_DIR/$item"
+    ln -sfn "$HOST_DIR/$item" "$DEVC_DIR/$item"
+    chown -h "$TARGET_USER" "$DEVC_DIR/$item" 2>/dev/null || true
+done
+
+# Shared FILES: link only when the host already has the file; otherwise leave
+# the per-repo store entry in place so the path stays valid (no dangling link,
+# no bogus empty file). A stale link from a previous build (host had it, then
+# removed it) is cleaned up so it falls back to the store; a real per-repo entry
+# with data is preserved.
+for item in $HOST_SHARED_FILES; do
     if [ -e "$HOST_DIR/$item" ]; then
         rm -rf "$DEVC_DIR/$item"
         ln -sfn "$HOST_DIR/$item" "$DEVC_DIR/$item"
