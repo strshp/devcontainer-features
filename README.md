@@ -1,6 +1,8 @@
 # devcontainer-features
 
-[Dev Container Features](https://containers.dev/implementors/features/) を開発・公開しているリポジトリです。各 Feature は GitHub Container Registry (ghcr.io) で配布しており、`devcontainer.json` の `features` に追記するだけで利用できます。[Feature 配布仕様](https://containers.dev/implementors/features-distribution/) に準拠しています。
+[![CI - Test Features](https://github.com/strshp/devcontainer-features/actions/workflows/test.yaml/badge.svg)](https://github.com/strshp/devcontainer-features/actions/workflows/test.yaml)
+
+[Dev Container Features](https://containers.dev/implementors/features/) を開発・公開しているリポジトリです。各 Feature は GitHub Container Registry (ghcr.io) で配布しており、`devcontainer.json` の `features` に追記するだけで利用できます。
 
 ## Features 一覧
 
