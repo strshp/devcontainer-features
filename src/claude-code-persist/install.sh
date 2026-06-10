@@ -66,20 +66,15 @@ chown "$TARGET_USER" "$DEVC_DIR" 2>/dev/null || true
 rm -rf "$TARGET_HOME/.claude"
 ln -sfn "$DEVC_DIR" "$TARGET_HOME/.claude"
 
-# Override the host-shared items: point them at the host's ~/.claude.
-# Only link items the host actually has; we never create anything on the host
-# (no empty dirs, no default files). Linking a missing one would create a
-# dangling symlink, so for a missing item we leave the per-repo store entry in
-# place — the path stays valid and Claude Code can create it per repository on
-# demand. A stale link from a previous build (host had it, then removed it) is
-# cleaned up so it falls back to the store; a real per-repo entry is preserved.
+# Override the host-shared items: point them at the host's ~/.claude. We only
+# ever create a symlink for an item the host actually has. The feature never
+# writes anything into the host's ~/.claude, and does nothing for a missing
+# item — no default file, no empty dir, no store bookkeeping.
 for item in $HOST_SHARED; do
     if [ -e "$HOST_DIR/$item" ]; then
         rm -rf "$DEVC_DIR/$item"
         ln -sfn "$HOST_DIR/$item" "$DEVC_DIR/$item"
         chown -h "$TARGET_USER" "$DEVC_DIR/$item" 2>/dev/null || true
-    elif [ -L "$DEVC_DIR/$item" ]; then
-        rm -f "$DEVC_DIR/$item"
     fi
 done
 

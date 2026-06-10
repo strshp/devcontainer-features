@@ -24,17 +24,14 @@ check "store dir exists"                test -d /root/.claude
 # ~/.claude.json is shared from the host (it lives at the home root).
 check "~/.claude.json -> host"          bash -c '[ "$(readlink /root/.claude.json)" = "/var/claude-code-host-claude-json" ]'
 
-# Host-shared items must NEVER be dangling symlinks, and the feature never
-# creates anything on the host. When the host's ~/.claude lacks an item (no
-# CLAUDE.md, commands/, agents/, ...), the path must stay valid (absent, a real
-# per-repo entry, or a symlink whose target exists) so it falls back to the
-# per-repo store. If the host HAS the item, it is a symlink to the host mount,
-# and the item must not have been created on the host by the feature.
+# For each shared item: if the host HAS it, it is a symlink to the host mount.
+# If the host lacks it, the feature does nothing — no symlink is created (so
+# nothing is dangling) and nothing is created on the host.
 for item in .credentials.json settings.json settings.local.json keybindings.json CLAUDE.md skills commands agents output-styles rules workflows themes plugins; do
     if [ -e "$HOST/$item" ]; then
         check "$item -> host"           bash -c "[ \"\$(readlink /root/.claude/$item)\" = \"$HOST/$item\" ]"
     else
-        check "$item not dangling"      bash -c "[ ! -L \"/root/.claude/$item\" ] || [ -e \"/root/.claude/$item\" ]"
+        check "$item has no symlink"    bash -c "[ ! -L \"/root/.claude/$item\" ]"
         check "$item not created on host" bash -c "[ ! -e \"$HOST/$item\" ]"
     fi
 done
