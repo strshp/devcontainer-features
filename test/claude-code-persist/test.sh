@@ -24,9 +24,17 @@ check "store dir exists"                test -d /root/.claude
 # ~/.claude.json is shared from the host (it lives at the home root).
 check "~/.claude.json -> host"          bash -c '[ "$(readlink /root/.claude.json)" = "/var/claude-code-host-claude-json" ]'
 
-# Host-shared items: symlinks inside the store pointing at the host mount.
+# Host-shared items must NEVER be dangling symlinks: when the host's ~/.claude
+# lacks an item (no CLAUDE.md, commands/, agents/, ...), the path must stay
+# valid (absent, a real per-repo entry, or a symlink whose target exists) so it
+# can fall back to the per-repo store. If the host HAS the item, it is a symlink
+# pointing at the host mount.
 for item in .credentials.json settings.json settings.local.json keybindings.json CLAUDE.md skills commands agents output-styles rules workflows themes plugins; do
-    check "$item -> host"               bash -c "[ \"\$(readlink /root/.claude/$item)\" = \"$HOST/$item\" ]"
+    if [ -e "$HOST/$item" ]; then
+        check "$item -> host"           bash -c "[ \"\$(readlink /root/.claude/$item)\" = \"$HOST/$item\" ]"
+    else
+        check "$item not dangling"      bash -c "[ ! -L \"/root/.claude/$item\" ] || [ -e \"/root/.claude/$item\" ]"
+    fi
 done
 
 # Runtime state defaults to the per-repo store. (Safe: writes only into the
@@ -37,8 +45,18 @@ check "runtime write stays in store" bash -c '
     test -f /root/.claude/projects/.persist-test
 '
 
-# NOTE: we deliberately do NOT write through a host-shared symlink here; the
-# host mount is the real ~/.claude when this runs locally. Host wiring is
-# covered structurally by the readlink checks above.
+# Positive path: once the host gains an item, re-running init links it from the
+# host. Guarded to an empty host mount (CI scratch dir) so we never mutate a
+# developer's real ~/.claude on a local test run; we also clean up after.
+if [ -z "$(ls -A "$HOST" 2>/dev/null)" ]; then
+    WORKSPACE="$(dirname "$(dirname "$(readlink /root/.claude)")")"
+    mkdir -p "$HOST/commands"
+    printf '# memory\n' > "$HOST/CLAUDE.md"
+    /usr/local/bin/claude-code-persist-init "$WORKSPACE"
+    check "commands -> host once present"  bash -c "[ \"\$(readlink /root/.claude/commands)\" = \"$HOST/commands\" ]"
+    check "CLAUDE.md -> host once present" bash -c "[ \"\$(readlink /root/.claude/CLAUDE.md)\" = \"$HOST/CLAUDE.md\" ]"
+    check "CLAUDE.md readable via link"    test -f /root/.claude/CLAUDE.md
+    rm -rf "$HOST/commands" "$HOST/CLAUDE.md"
+fi
 
 reportResults

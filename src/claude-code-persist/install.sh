@@ -67,10 +67,20 @@ rm -rf "$TARGET_HOME/.claude"
 ln -sfn "$DEVC_DIR" "$TARGET_HOME/.claude"
 
 # Override the host-shared items: point them at the host's ~/.claude.
+# Only link items the host actually has; linking a missing one would create a
+# dangling symlink (e.g. no ~/.claude/CLAUDE.md, commands/, agents/ on the
+# host). For a missing item we leave the per-repo store entry in place so the
+# path stays valid and Claude Code can create it per repository on demand. A
+# stale link from a previous build (host had it, then removed it) is cleaned up
+# so it falls back to the store; a real per-repo entry with data is preserved.
 for item in $HOST_SHARED; do
-    rm -rf "$DEVC_DIR/$item"
-    ln -sfn "$HOST_DIR/$item" "$DEVC_DIR/$item"
-    chown -h "$TARGET_USER" "$DEVC_DIR/$item" 2>/dev/null || true
+    if [ -e "$HOST_DIR/$item" ]; then
+        rm -rf "$DEVC_DIR/$item"
+        ln -sfn "$HOST_DIR/$item" "$DEVC_DIR/$item"
+        chown -h "$TARGET_USER" "$DEVC_DIR/$item" 2>/dev/null || true
+    elif [ -L "$DEVC_DIR/$item" ]; then
+        rm -f "$DEVC_DIR/$item"
+    fi
 done
 
 # ~/.claude.json lives at the home root (not inside ~/.claude) -> share from host.
