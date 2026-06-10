@@ -46,9 +46,10 @@ DEVC_DIR="$WORKSPACE_FOLDER/.devcontainer/claude-store"
 #  - DIRS: created empty on the host when absent, then symlinked. This keeps the
 #    link valid (no dangling) AND makes them genuinely shared — anything created
 #    in a container lands in the host's ~/.claude and shows up everywhere.
-#  - FILES: only linked when the host already has them. Creating an empty file
-#    would be harmful (invalid JSON for settings/keybindings, a bogus empty
-#    .credentials.json), so a missing file falls back to the per-repo store.
+#  - FILES: created on the host with their documented initial state when absent,
+#    then symlinked (so they are shared too). Exception: .credentials.json is
+#    auth material with no sensible default, so it is linked only when present
+#    and otherwise falls back to the per-repo store.
 HOST_SHARED_DIRS="skills commands agents output-styles rules workflows themes plugins"
 HOST_SHARED_FILES=".credentials.json settings.json settings.local.json keybindings.json CLAUDE.md"
 
@@ -91,19 +92,40 @@ for item in $HOST_SHARED_DIRS; do
     chown -h "$TARGET_USER" "$DEVC_DIR/$item" 2>/dev/null || true
 done
 
-# Shared FILES: link only when the host already has the file; otherwise leave
-# the per-repo store entry in place so the path stays valid (no dangling link,
-# no bogus empty file). A stale link from a previous build (host had it, then
-# removed it) is cleaned up so it falls back to the store; a real per-repo entry
-# with data is preserved.
+# Shared FILES: link the host file when present; otherwise create it on the host
+# with its documented initial state and link that, so the file is shared with
+# the host (edits in any container propagate) and the link is never dangling.
+# Initial states per the official docs (code.claude.com/docs/en/claude-directory,
+# .../settings, .../keybindings): settings*.json are valid as a bare object,
+# keybindings.json is an object with a `bindings` array, CLAUDE.md is empty.
+#
+# Exception: .credentials.json has no meaningful initial state and is auth
+# material — fabricating it would be wrong/harmful — so it is linked only when
+# the host already has it, else it falls back to the per-repo store.
 for item in $HOST_SHARED_FILES; do
-    if [ -e "$HOST_DIR/$item" ]; then
-        rm -rf "$DEVC_DIR/$item"
-        ln -sfn "$HOST_DIR/$item" "$DEVC_DIR/$item"
-        chown -h "$TARGET_USER" "$DEVC_DIR/$item" 2>/dev/null || true
-    elif [ -L "$DEVC_DIR/$item" ]; then
-        rm -f "$DEVC_DIR/$item"
+    if [ ! -e "$HOST_DIR/$item" ]; then
+        case "$item" in
+            .credentials.json)
+                # Never fabricate credentials; fall back to the per-repo store.
+                if [ -L "$DEVC_DIR/$item" ]; then rm -f "$DEVC_DIR/$item"; fi
+                continue
+                ;;
+            settings.json|settings.local.json)
+                printf '{\n  "$schema": "https://json.schemastore.org/claude-code-settings.json"\n}\n' > "$HOST_DIR/$item"
+                ;;
+            keybindings.json)
+                printf '{\n  "$schema": "https://www.schemastore.org/claude-code-keybindings.json",\n  "bindings": []\n}\n' > "$HOST_DIR/$item"
+                ;;
+            *)
+                # CLAUDE.md and any other plain-text file: empty initial state.
+                : > "$HOST_DIR/$item"
+                ;;
+        esac
+        chown "$TARGET_USER" "$HOST_DIR/$item" 2>/dev/null || true
     fi
+    rm -rf "$DEVC_DIR/$item"
+    ln -sfn "$HOST_DIR/$item" "$DEVC_DIR/$item"
+    chown -h "$TARGET_USER" "$DEVC_DIR/$item" 2>/dev/null || true
 done
 
 # ~/.claude.json lives at the home root (not inside ~/.claude) -> share from host.

@@ -32,17 +32,37 @@ for item in skills commands agents output-styles rules workflows themes plugins;
     check "$item link not dangling"     test -d "/root/.claude/$item"
 done
 
-# Shared FILES must never be dangling: when the host lacks the file (no
-# CLAUDE.md, keybindings.json, ...) the path stays valid (absent, a real
-# per-repo entry, or a symlink whose target exists) and falls back to the
-# per-repo store. If the host HAS the file, it is a symlink to the host mount.
-for item in .credentials.json settings.json settings.local.json keybindings.json CLAUDE.md; do
-    if [ -e "$HOST/$item" ]; then
-        check "$item -> host"           bash -c "[ \"\$(readlink /root/.claude/$item)\" = \"$HOST/$item\" ]"
-    else
-        check "$item not dangling"      bash -c "[ ! -L \"/root/.claude/$item\" ] || [ -e \"/root/.claude/$item\" ]"
-    fi
+# Shared config FILES are always linked to the host: when the host lacks one it
+# is created with its documented initial state, so the link is never dangling
+# and the file is shared with the host.
+for item in settings.json settings.local.json keybindings.json CLAUDE.md; do
+    check "$item -> host"               bash -c "[ \"\$(readlink /root/.claude/$item)\" = \"$HOST/$item\" ]"
+    check "$item is a regular file"     test -f "/root/.claude/$item"
 done
+
+# Fabricated JSON config has valid, parseable content. Validate with whatever
+# JSON parser the image happens to have (node ships with the claude-code dep);
+# skip the check if none is available rather than fail spuriously.
+if command -v node >/dev/null 2>&1; then
+    JSON_PARSE='node -e "JSON.parse(require(\"fs\").readFileSync(process.argv[1],\"utf8\"))"'
+elif command -v python3 >/dev/null 2>&1; then
+    JSON_PARSE='python3 -c "import json,sys; json.load(open(sys.argv[1]))"'
+else
+    JSON_PARSE=''
+fi
+if [ -n "$JSON_PARSE" ]; then
+    for item in settings.json settings.local.json keybindings.json; do
+        check "$item is valid JSON" sh -c "$JSON_PARSE /root/.claude/$item"
+    done
+fi
+
+# .credentials.json is auth material: never fabricated. Linked only when the
+# host already has it; otherwise the path must not be a dangling symlink.
+if [ -e "$HOST/.credentials.json" ]; then
+    check ".credentials.json -> host" bash -c "[ \"\$(readlink /root/.claude/.credentials.json)\" = \"$HOST/.credentials.json\" ]"
+else
+    check ".credentials.json not dangling" bash -c "[ ! -L \"/root/.claude/.credentials.json\" ] || [ -e \"/root/.claude/.credentials.json\" ]"
+fi
 
 # Runtime state defaults to the per-repo store. (Safe: writes only into the
 # store under the workspace, never the host's real ~/.claude.)
@@ -51,18 +71,5 @@ check "runtime write stays in store" bash -c '
     echo hello > /root/.claude/projects/.persist-test &&
     test -f /root/.claude/projects/.persist-test
 '
-
-# Positive path for FILES: once the host gains a shared file, re-running init
-# links it from the host. Guarded on the file being absent so we never clobber a
-# developer's real ~/.claude/CLAUDE.md on a local run; we remove only what we
-# create. (Shared dirs are covered by the always-linked checks above.)
-if [ ! -e "$HOST/CLAUDE.md" ]; then
-    WORKSPACE="$(dirname "$(dirname "$(readlink /root/.claude)")")"
-    printf '# memory\n' > "$HOST/CLAUDE.md"
-    /usr/local/bin/claude-code-persist-init "$WORKSPACE"
-    check "CLAUDE.md -> host once present" bash -c "[ \"\$(readlink /root/.claude/CLAUDE.md)\" = \"$HOST/CLAUDE.md\" ]"
-    check "CLAUDE.md readable via link"    test -f /root/.claude/CLAUDE.md
-    rm -f "$HOST/CLAUDE.md"
-fi
 
 reportResults
