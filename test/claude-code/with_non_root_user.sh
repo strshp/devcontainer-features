@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Scenario: a non-root remoteUser (octocat). Verifies the wiring lands in the
-# user's home (not /root) and is owned by that user.
+# シナリオ: 非 root の remoteUser（octocat）。配線が（/root ではなく）当該ユーザーの
+# ホームに作られ、そのユーザー所有になることを検証する。
 
 set -e
 

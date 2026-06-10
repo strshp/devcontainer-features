@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# Scenario: a non-root remoteUser (octocat). Verifies gh is pointed at the host
-# bind mount via GH_CONFIG_DIR and that the directory is writable by that user
-# (gh-init chowns it when Docker created the mount target as root).
+# シナリオ: 非 root の remoteUser（octocat）。gh が GH_CONFIG_DIR でホストの bind
+# マウントへ向き、そのディレクトリが当該ユーザーで書き込めることを検証する
+# （マウント先が root 所有で作成された場合は gh-init が chown する）。
 
 set -e
 

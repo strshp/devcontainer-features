@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# Default test: runs against an auto-generated devcontainer.json with the
-# gh feature and no options. remoteUser defaults to root.
+# デフォルトテスト: オプション無し・自動生成の devcontainer.json で実行する。
+# remoteUser は既定で root。
 #
-# Verifies that the feature points gh at the host bind mount via GH_CONFIG_DIR.
+# Feature が GH_CONFIG_DIR で gh をホストの bind マウントへ向けることを検証する。
 
 set -e
 
@@ -11,16 +11,16 @@ source dev-container-features-test-lib
 
 HOST_CONFIG=/var/gh-host-config
 
-# Mount target must exist (Docker creates it on mount).
+# マウント先が存在すること（Docker がマウント時に作成する）。
 check "host config mount target exists" test -d "$HOST_CONFIG"
 
-# gh itself is installed automatically via the github-cli dependency (dependsOn).
+# gh 本体は github-cli の依存（dependsOn）で自動的にインストールされる。
 check "gh is installed" bash -c 'command -v gh >/dev/null'
 
-# gh is pointed at the host bind mount via GH_CONFIG_DIR (no symlink needed).
+# gh は GH_CONFIG_DIR でホストの bind マウントへ向く（symlink は不要）。
 check "GH_CONFIG_DIR -> host mount" bash -c '[ "$GH_CONFIG_DIR" = "/var/gh-host-config" ]'
 
-# Functional check: writing into the config dir lands on the host bind mount.
+# 機能確認: 設定ディレクトリへの書き込みがホストの bind マウントに届く。
 check "write reaches host mount" bash -c '
     echo "test" > "$GH_CONFIG_DIR/.persist-test" &&
     test -f /var/gh-host-config/.persist-test

@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# Scenario: options provided (default root user). Verifies the CLI is installed
-# and the three options are exported as CONFLUENCE_* in login shells, including
-# a password that contains a single quote (exercises the quoting in install.sh).
+# シナリオ: オプション指定あり（既定の root ユーザー）。CLI がインストールされ、
+# 3 つのオプションがログインシェルで CONFLUENCE_* として export されることを検証
+# する。単一引用符を含むパスワードも含む（install.sh のクォート処理を試す）。
 
 set -e
 
@@ -13,7 +13,7 @@ check "confluence on PATH"     bash -c 'command -v confluence'
 check "env file exists"        test -f /etc/profile.d/confluence-cli.sh
 check "env file mode is 644"   bash -c '[ "$(stat -c %a /etc/profile.d/confluence-cli.sh)" = "644" ]'
 
-# Values are exported into login shells. The password contains a single quote.
+# 値はログインシェルに export される。パスワードには単一引用符を含める。
 export EXPECT_URL="https://confluence.example.com/confluence"
 export EXPECT_USER="alice"
 export EXPECT_PW="p@ss'w0rd"

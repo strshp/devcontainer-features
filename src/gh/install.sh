@@ -1,27 +1,27 @@
 #!/bin/sh
 set -e
 
-echo "Activating feature 'gh'"
+echo "Feature 'gh' を有効化しています"
 
 HOST_CONFIG_DIR=/var/gh-host-config
 
 # ---------------------------------------------------------------------------
-# Hostname resolution (removes the "sudo: unable to resolve host" warning).
+# ホスト名の解決（「sudo: unable to resolve host」警告を消す）。
 #
-# With network_mode: host (or a custom hostname) the container inherits a
-# hostname that is not present in /etc/hosts, so sudo and other tools emit
-# "unable to resolve host <name>". Editing /etc/hosts at runtime is too late
-# for the very first sudo call (the one that runs this feature's init helper).
-# Installing nss-myhostname resolves the local hostname at the NSS layer, so
-# resolution succeeds for the very first sudo call and for every tool, without
-# touching /etc/hosts at all. Best-effort: skipped if apt is unavailable.
+# network_mode: host（やカスタムホスト名）では、/etc/hosts に無いホスト名を
+# コンテナが引き継ぐため、sudo などが「unable to resolve host <name>」を出す。
+# /etc/hosts をランタイムで編集するのは、最初の sudo 呼び出し（この Feature の
+# 初期化ヘルパーを実行するもの）には間に合わない。nss-myhostname を入れると
+# NSS 層でローカルホスト名が解決されるので、/etc/hosts を一切触らずに、最初の
+# sudo 呼び出しからすべてのツールで解決が成功する。ベストエフォート（apt が
+# 無ければスキップ）。
 # ---------------------------------------------------------------------------
 if ! ls /usr/lib/*/libnss_myhostname.so* >/dev/null 2>&1; then
     if command -v apt-get >/dev/null 2>&1; then
         export DEBIAN_FRONTEND=noninteractive
         apt-get update -y \
             && apt-get install -y --no-install-recommends libnss-myhostname \
-            || echo "gh: could not install libnss-myhostname; sudo may warn 'unable to resolve host' under network_mode: host"
+            || echo "gh: libnss-myhostname をインストールできませんでした。network_mode: host 下で sudo が 'unable to resolve host' と警告する場合があります"
     fi
 fi
 if [ -f /etc/nsswitch.conf ] && ! grep -q '^hosts:.*myhostname' /etc/nsswitch.conf; then
@@ -29,17 +29,16 @@ if [ -f /etc/nsswitch.conf ] && ! grep -q '^hosts:.*myhostname' /etc/nsswitch.co
 fi
 
 # ---------------------------------------------------------------------------
-# Runtime init helper for postCreateCommand.
+# postCreateCommand 用のランタイム初期化ヘルパー。
 #
-# gh reads its config from $GH_CONFIG_DIR (set to /var/gh-host-config via the
-# feature's containerEnv), which is the host's ~/.config/gh bind mount — so no
-# symlink into the user's home is needed. (The previous build-time symlink was
-# fragile: it depended on the build-time user and was lost when the runtime
-# home differed.) Here we only ensure the host directory exists and is writable
-# by the runtime user.
+# gh は設定を $GH_CONFIG_DIR（Feature の containerEnv で /var/gh-host-config に
+# 設定）から読む。これはホストの ~/.config/gh の bind マウントなので、ユーザー
+# ホームへの symlink は不要。（以前のビルド時 symlink はビルド時ユーザーに依存し、
+# ランタイムのホームが異なると失われて脆かった。）ここではホストディレクトリが
+# 存在し、ランタイムユーザーが書き込めることだけを保証する。
 #
-# Docker creates the bind source as root if it does not exist yet; we chown it
-# in that case only, to avoid touching pre-existing host files.
+# Docker はマウント元が無いと root 所有で作成する。その場合のみ chown し、
+# 既存のホストファイルには触れないようにする。
 # ---------------------------------------------------------------------------
 cat > /usr/local/bin/gh-init <<'INITSH'
 #!/bin/sh
@@ -50,12 +49,12 @@ HOST_CONFIG_DIR=/var/gh-host-config
 
 mkdir -p "$HOST_CONFIG_DIR"
 
-# Only chown when Docker just created the directory as root (uid 0).
-# If the directory already had content from the host, leave ownership as-is.
+# Docker が root（uid 0）で作成した直後のときだけ chown する。
+# 既にホストの中身が入っている場合は所有権をそのままにする。
 if [ "$(stat -c '%u' "$HOST_CONFIG_DIR")" = "0" ]; then
     chown "$TARGET_USER" "$HOST_CONFIG_DIR"
 fi
 INITSH
 chmod 755 /usr/local/bin/gh-init
 
-echo "GitHub CLI credential persistence wired up (GH_CONFIG_DIR=$HOST_CONFIG_DIR)"
+echo "GitHub CLI の認証情報の永続化を設定しました（GH_CONFIG_DIR=$HOST_CONFIG_DIR）"

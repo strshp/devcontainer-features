@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# Scenario: options provided with a non-root remoteUser (octocat). Verifies the
-# CLI is usable by the non-root user and the env file is owned by that user and
-# exported into their login shells.
+# シナリオ: 非 root の remoteUser（octocat）でオプション指定あり。非 root ユーザー
+# でも CLI が使え、env ファイルが全ユーザー読み取り可で、当該ユーザーのログイン
+# シェルに export されることを検証する。
 
 set -e
 
