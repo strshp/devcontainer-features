@@ -13,13 +13,7 @@ HOST=/var/claude-code-host
 check "~/.claude -> workspace store" bash -c "[[ \"\$(readlink $USER_HOME/.claude)\" == */.devcontainer/claude-store ]]"
 check "store dir exists"             test -d "$USER_HOME/.claude"
 check "~/.claude.json -> host"       bash -c "[ \"\$(readlink $USER_HOME/.claude.json)\" = \"/var/claude-code-host-claude-json\" ]"
-# .credentials.json is shared from the host only when the host actually has it;
-# otherwise the path must not be a dangling symlink (falls back to the store).
-if [ -e "$HOST/.credentials.json" ]; then
-    check ".credentials.json -> host" bash -c "[ \"\$(readlink $USER_HOME/.claude/.credentials.json)\" = \"$HOST/.credentials.json\" ]"
-else
-    check ".credentials.json not dangling" bash -c "[ ! -L \"$USER_HOME/.claude/.credentials.json\" ] || [ -e \"$USER_HOME/.claude/.credentials.json\" ]"
-fi
+check ".credentials.json -> host"    bash -c "[ \"\$(readlink $USER_HOME/.claude/.credentials.json)\" = \"$HOST/.credentials.json\" ]"
 check "~/.claude owned by octocat"   bash -c "[ \"\$(stat -c '%U' $USER_HOME/.claude)\" = \"octocat\" ]"
 
 reportResults

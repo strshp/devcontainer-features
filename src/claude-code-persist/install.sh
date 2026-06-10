@@ -66,16 +66,15 @@ chown "$TARGET_USER" "$DEVC_DIR" 2>/dev/null || true
 rm -rf "$TARGET_HOME/.claude"
 ln -sfn "$DEVC_DIR" "$TARGET_HOME/.claude"
 
-# Override the host-shared items: point them at the host's ~/.claude. We only
-# ever create a symlink for an item the host actually has. The feature never
-# writes anything into the host's ~/.claude, and does nothing for a missing
-# item — no default file, no empty dir, no store bookkeeping.
+# Override the host-shared items: point them at the host's ~/.claude. The link
+# is created unconditionally; the feature creates nothing on the host. If the
+# host does not have the item the link is dangling until the host gains it —
+# accepted by design, since these are user-global config paths that resolve as
+# soon as the host's ~/.claude has them.
 for item in $HOST_SHARED; do
-    if [ -e "$HOST_DIR/$item" ]; then
-        rm -rf "$DEVC_DIR/$item"
-        ln -sfn "$HOST_DIR/$item" "$DEVC_DIR/$item"
-        chown -h "$TARGET_USER" "$DEVC_DIR/$item" 2>/dev/null || true
-    fi
+    rm -rf "$DEVC_DIR/$item"
+    ln -sfn "$HOST_DIR/$item" "$DEVC_DIR/$item"
+    chown -h "$TARGET_USER" "$DEVC_DIR/$item" 2>/dev/null || true
 done
 
 # ~/.claude.json lives at the home root (not inside ~/.claude) -> share from host.
