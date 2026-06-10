@@ -9,8 +9,6 @@ BASE_URL="${BASE_URL:-}"
 USER_NAME="${USER_NAME:-}"
 USER_PASSWORD="${USER_PASSWORD:-}"
 
-REMOTE_USER="${_REMOTE_USER:-root}"
-
 # Shared, world-readable location for uv's tool data so the installed CLI is
 # runnable by the (non-root) remote user too; the launcher is placed on PATH.
 UV_ROOT=/opt/uv
@@ -60,9 +58,12 @@ if [ -n "$BASE_URL" ] || [ -n "$USER_NAME" ] || [ -n "$USER_PASSWORD" ]; then
         if [ -n "$USER_NAME" ];     then echo "export CONFLUENCE_USER_NAME=$(squote "$USER_NAME")"; fi
         if [ -n "$USER_PASSWORD" ]; then echo "export CONFLUENCE_USER_PASSWORD=$(squote "$USER_PASSWORD")"; fi
     } > "$ENV_FILE"
-    # Contains a password: restrict to the remote user (root can still read it).
-    chown "$REMOTE_USER" "$ENV_FILE" 2>/dev/null || true
-    chmod 600 "$ENV_FILE"
+    # World-readable (root-owned, like normal /etc/profile.d files): the runtime
+    # user is not reliably known at build time, and restricting to a guessed
+    # owner makes the file unreadable (so the vars unset) when the actual login
+    # user differs. The value is already an env var visible to the user's
+    # processes and is baked into the image, so 644 does not widen exposure.
+    chmod 644 "$ENV_FILE"
 
     # Interactive (non-login) bash/zsh shells don't read /etc/profile.d; source
     # it from their global rc files too, idempotently.

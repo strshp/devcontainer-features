@@ -50,4 +50,5 @@ The credential values are written into the container image at build time
 built image and the `devcontainer.json` containing `user_password` as secrets:
 do not commit real credentials to a shared `devcontainer.json`, and do not push
 the built image to a registry others can pull. The generated
-`/etc/profile.d/confluence-cli.sh` is mode `600` and owned by the remote user.
+`/etc/profile.d/confluence-cli.sh` is world-readable (mode `644`) inside the
+container, like other profile scripts.

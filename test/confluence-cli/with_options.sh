@@ -11,7 +11,7 @@ source dev-container-features-test-lib
 check "confluence on PATH"     bash -c 'command -v confluence'
 
 check "env file exists"        test -f /etc/profile.d/confluence-cli.sh
-check "env file mode is 600"   bash -c '[ "$(stat -c %a /etc/profile.d/confluence-cli.sh)" = "600" ]'
+check "env file mode is 644"   bash -c '[ "$(stat -c %a /etc/profile.d/confluence-cli.sh)" = "644" ]'
 
 # Values are exported into login shells. The password contains a single quote.
 export EXPECT_URL="https://confluence.example.com/confluence"

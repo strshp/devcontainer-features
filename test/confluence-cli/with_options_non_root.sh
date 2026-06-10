@@ -12,7 +12,7 @@ check "running as octocat"        bash -c '[ "$(id -un)" = "octocat" ]'
 check "confluence on PATH"        bash -c 'command -v confluence'
 check "confluence --help works"   bash -c 'confluence --help >/dev/null 2>&1'
 
-check "env file owned by octocat" bash -c '[ "$(stat -c %U /etc/profile.d/confluence-cli.sh)" = "octocat" ]'
+check "env file is world-readable" bash -c '[ "$(stat -c %a /etc/profile.d/confluence-cli.sh)" = "644" ]'
 
 export EXPECT_URL="https://confluence.example.com/confluence"
 export EXPECT_PW="p@ss'w0rd"
