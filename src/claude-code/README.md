@@ -1,5 +1,5 @@
 
-# Claude Code Persistence (claude-code)
+# Claude Code (claude-code)
 
 Claude Code の状態をコンテナ再ビルド越しに永続化する Feature です。
 
