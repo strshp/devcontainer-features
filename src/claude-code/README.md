@@ -1,7 +1,6 @@
-
 # Claude Code (claude-code)
 
-Claude Code の状態をコンテナ再ビルド越しに永続化する Feature です。
+Claude Code の状態をコンテナ再ビルド越し・DevContainer 間で永続化する Feature です。
 
 状態を **2 つのバケツ**に決め打ちで振り分けます。
 
@@ -19,6 +18,8 @@ Claude Code の状態をコンテナ再ビルド越しに永続化する Feature
 - 会話履歴・auto-memory・キャッシュはリポジトリごとに分離。`--resume` に必要なセッション系も保持。
 
 配線はすべて `postCreateCommand`（ランタイム）で行い、コンテナユーザーは `SUDO_USER` から判定します（ビルド時 `_REMOTE_USER` には依存しません）。
+
+> Feature がホストの `~/.claude` に何かを作成することはありません。そのため、ホストにまだ無いホスト共有項目（例: `CLAUDE.md` や `commands/` を作っていない場合）に対応する symlink は、リンク切れ（dangling）になります。これは**設計上の許容**で、ホスト側にそのファイル／ディレクトリを用意すれば自動的に解決されます。
 
 ## 利用例
 
