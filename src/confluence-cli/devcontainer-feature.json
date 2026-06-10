@@ -1,7 +1,7 @@
 {
     "name": "Confluence CLI",
     "id": "confluence-cli",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "description": "kci-confluence-cli（confluence コマンド）を PyPI から導入し、接続情報を CONFLUENCE_* 環境変数として設定します。",
     "options": {
         "base_url": {

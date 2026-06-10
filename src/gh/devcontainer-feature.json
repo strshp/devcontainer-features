@@ -1,7 +1,7 @@
 {
     "name": "GitHub CLI",
     "id": "gh",
-    "version": "1.2.1",
+    "version": "1.2.2",
     "description": "GitHub CLI の認証情報をホストの ~/.config/gh と共有して永続化します。gh auth login はホストで一度だけで済みます。",
     "mounts": [
         {
@@ -15,6 +15,6 @@
     },
     "postCreateCommand": "sudo -n /usr/local/bin/gh-init",
     "dependsOn": {
-        "ghcr.io/devcontainers/features/github-cli:1": {}
+        "ghcr.io/devcontainers/features/github-cli": {}
     }
 }

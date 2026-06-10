@@ -1,10 +1,10 @@
 {
     "name": "Claude Code",
     "id": "claude-code",
-    "version": "2.4.1",
+    "version": "2.4.2",
     "description": "Claude Code の認証情報・設定をホストの ~/.claude と共有し、会話などの実行時状態をリポジトリ単位で永続化します。",
     "dependsOn": {
-        "ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {}
+        "ghcr.io/anthropics/devcontainer-features/claude-code": {}
     },
     "mounts": [
         {
