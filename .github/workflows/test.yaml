@@ -28,6 +28,21 @@ jobs:
             echo "$f: shell syntax OK"
           done
 
+  test-confluence-cli:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: "Install latest devcontainer CLI"
+        run: npm install -g @devcontainers/cli
+
+      - name: "Run feature tests (test.sh + scenarios)"
+        run: |
+          devcontainer features test \
+            --features confluence-cli \
+            --base-image mcr.microsoft.com/devcontainers/base:ubuntu \
+            --project-folder .
+
   test-claude-code-persist:
     runs-on: ubuntu-latest
     steps:
