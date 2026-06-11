@@ -32,14 +32,12 @@ fi
 # postCreateCommand 用のランタイム初期化ヘルパー。
 #
 # gh は設定を $GH_CONFIG_DIR（Feature の containerEnv で /var/gh-config に設定）
-# から読む。これは専用の永続ストア（ホストの ~/.config/gh-devcontainers の bind
-# マウント）。ホストの ~/.config/gh はマウントしない: ホストが keyring に
-# トークンを保存しているとマウントしてもトークンが渡らないため。コンテナには
-# keyring が無いので、このストアで `gh auth login` するとトークンはファイルに
-# 保存され（hosts.yml）、全 DevContainer で共有・再ビルド越しに永続する。
-# ここではストアが存在し、ランタイムユーザーが書き込めることだけを保証する。
-#
-# Docker はマウント元が無いと root 所有で作成する。その場合のみ chown する。
+# から読む。これは専用の永続ストア（Docker 名前付きボリューム gh-devcontainers）。
+# ホストの ~/.config/gh はマウントしない: ホストが keyring にトークンを保存して
+# いるとマウントしてもトークンが渡らないため。コンテナには keyring が無いので、
+# このストアで `gh auth login` するとトークンはファイル（hosts.yml）に保存され、
+# 再ビルド越しに永続する。ボリュームは root 所有で作成されるため、ランタイム
+# ユーザーが書き込めるよう chown する。
 # ---------------------------------------------------------------------------
 cat > /usr/local/bin/gh-init <<'INITSH'
 #!/bin/sh

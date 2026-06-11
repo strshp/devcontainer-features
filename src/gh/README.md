@@ -4,14 +4,6 @@
 
 `gh` 本体は公式の [`github-cli`](https://github.com/devcontainers/features/tree/main/src/github-cli) Feature を `dependsOn` で自動的に取り込んでインストールします。
 
-## 事前準備（初回のみ）
-
-永続ストアは bind マウントのため、**ホスト側にディレクトリが存在している必要があります**（無いとコンテナの起動に失敗します）。初回に一度だけ作成してください。
-
-```bash
-mkdir -p ~/.config/gh-devcontainers
-```
-
 ## 利用例
 
 ```jsonc
@@ -33,10 +25,14 @@ gh auth login
 
 ## 仕組み
 
-- ホストの `~/.config/gh-devcontainers` をコンテナの `/var/gh-config` に bind マウントし、`containerEnv` で `GH_CONFIG_DIR=/var/gh-config` を設定します。これが DevContainer 共通の永続ストアになります（ホスト固定パスなので全 DevContainer で共有されます）。
-- コンテナには keyring（資格情報ストア）が無いため、`gh auth login` のトークンは自動的に**ファイル**（`hosts.yml`）に保存されます。これがそのまま永続ストアに残ります。
-- マウント先がまだ存在せず Docker が root 所有で作成した場合のみ、`postCreateCommand`（`gh-init`）が実行ユーザーへ chown します。
+- Docker 名前付きボリューム `gh-devcontainers` をコンテナの `/var/gh-config` にマウントし、`containerEnv` で `GH_CONFIG_DIR=/var/gh-config` を設定します。これが永続ストアになります。ボリュームは自動作成されるので、ホスト側の事前準備は不要です。
+- コンテナには keyring（資格情報ストア）が無いため、`gh auth login` のトークンは自動的に**ファイル**（`hosts.yml`）に保存され、ボリュームに残ります。
+- ボリュームは root 所有で作成されるため、`postCreateCommand`（`gh-init`）が実行ユーザーへ chown します。
 - `sudo` がコンテナのホスト名を解決できず警告を出す問題（`network_mode: host` で起きやすい）を避けるため、`libnss-myhostname` を導入します。
+
+### 共有範囲（compose 利用時の注意）
+
+`image` / `build` ベースの DevContainer では、ボリューム名 `gh-devcontainers` はそのまま使われるため**全 DevContainer で共有**されます（ログインは一度きり）。一方、`dockerComposeFile` ベースの DevContainer では、Docker Compose がボリューム名を**プロジェクト名でプレフィックス**する（`<project>_gh-devcontainers`）ため、**プロジェクト（リポジトリ）ごとに別ストア**になり、その単位で一度ずつログインが必要です。
 
 ### なぜホストの `~/.config/gh` を共有しないのか
 
@@ -46,9 +42,9 @@ gh auth login
 
 ## 前提・注意
 
-- 認証情報は専用ストアに**平文ファイル**で保存されます（ユーザーのマシン上 `~/.config/gh-devcontainers`）。
-- **ホストに `~/.config/gh-devcontainers` が存在している必要があります**（bind マウントの source。無いとコンテナ起動に失敗します）。上記「事前準備」で一度だけ作成してください。マウント先が root 所有で作成された環境では、`gh-init` が利用ユーザーへ chown します。
+- 認証情報は Docker ボリューム `gh-devcontainers` に**平文ファイル**で保存されます。
 - ホストの本来の `gh`（`~/.config/gh`）とは独立です。コンテナ側のログインはホストには影響しません。
+- 共有範囲は compose 利用時に狭まります（上記「共有範囲」を参照）。
 
 ## Windows ホスト
 
