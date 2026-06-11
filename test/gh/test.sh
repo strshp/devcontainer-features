@@ -11,7 +11,7 @@ source dev-container-features-test-lib
 
 CONFIG=/var/gh-config
 
-# マウント先が存在すること（Docker がボリュームをマウントする）。
+# マウント先が存在すること（ホストの永続ストアを bind マウントした場所）。
 check "config mount target exists" test -d "$CONFIG"
 
 # gh 本体は github-cli の依存（dependsOn）で自動的にインストールされる。
@@ -20,7 +20,7 @@ check "gh is installed" bash -c 'command -v gh >/dev/null'
 # gh は GH_CONFIG_DIR で永続ストアへ向く。
 check "GH_CONFIG_DIR -> store" bash -c '[ "$GH_CONFIG_DIR" = "/var/gh-config" ]'
 
-# 機能確認: 設定ディレクトリへの書き込みが永続ストア（ボリューム）に届く。
+# 機能確認: 設定ディレクトリへの書き込みが永続ストア（bind マウント）に届く。
 check "write reaches store" bash -c '
     echo "test" > "$GH_CONFIG_DIR/.persist-test" &&
     test -f /var/gh-config/.persist-test

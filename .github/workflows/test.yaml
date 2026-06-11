@@ -51,6 +51,9 @@ jobs:
       - name: "Install latest devcontainer CLI"
         run: npm install -g @devcontainers/cli
 
+      - name: "Create the persistent store (bind source must exist)"
+        run: mkdir -p "$HOME/.config/gh-devcontainers"
+
       - name: "Run feature tests (test.sh + scenarios)"
         run: |
           devcontainer features test \

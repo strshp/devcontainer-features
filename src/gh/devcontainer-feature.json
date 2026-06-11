@@ -1,13 +1,13 @@
 {
     "name": "GitHub CLI",
     "id": "gh",
-    "version": "1.4.0",
-    "description": "GitHub CLI を導入し、認証情報を Docker ボリュームに永続化します。コンテナ内で gh auth login を一度行えば、再ビルド越しに保持されます。",
+    "version": "1.5.0",
+    "description": "GitHub CLI を導入し、認証情報を永続化します。コンテナ内で gh auth login を一度行えば、再ビルド越し・全 DevContainer で共有されます。",
     "mounts": [
         {
-            "source": "gh-devcontainers",
+            "source": "${localEnv:HOME}/.config/gh-devcontainers",
             "target": "/var/gh-config",
-            "type": "volume"
+            "type": "bind"
         }
     ],
     "containerEnv": {

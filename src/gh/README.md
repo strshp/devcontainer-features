@@ -4,6 +4,14 @@
 
 `gh` 本体は公式の [`github-cli`](https://github.com/devcontainers/features/tree/main/src/github-cli) Feature を `dependsOn` で自動的に取り込んでインストールします。
 
+## 事前準備（マシンで一度だけ）
+
+永続ストアはホストの bind マウントで、DevContainer の bind は source が存在しないと起動に失敗します（Feature はホスト側にディレクトリを作れません）。**マシンにつき一度だけ**作成してください（全 DevContainer で共有されるので、プロジェクトごとの作業は不要です）。
+
+```bash
+mkdir -p ~/.config/gh-devcontainers
+```
+
 ## 利用例
 
 ```jsonc
@@ -25,14 +33,10 @@ gh auth login
 
 ## 仕組み
 
-- Docker 名前付きボリューム `gh-devcontainers` をコンテナの `/var/gh-config` にマウントし、`containerEnv` で `GH_CONFIG_DIR=/var/gh-config` を設定します。これが永続ストアになります。ボリュームは自動作成されるので、ホスト側の事前準備は不要です。
-- コンテナには keyring（資格情報ストア）が無いため、`gh auth login` のトークンは自動的に**ファイル**（`hosts.yml`）に保存され、ボリュームに残ります。
-- ボリュームは root 所有で作成されるため、`postCreateCommand`（`gh-init`）が実行ユーザーへ chown します。
+- ホストの `~/.config/gh-devcontainers` をコンテナの `/var/gh-config` に bind マウントし、`containerEnv` で `GH_CONFIG_DIR=/var/gh-config` を設定します。これが永続ストアです。ホスト固定パスのため、`dockerComposeFile` ベースを含む**全 DevContainer で共有**されます（bind は Docker Compose のプロジェクト名プレフィックスの対象外）。
+- コンテナには keyring（資格情報ストア）が無いため、`gh auth login` のトークンは自動的に**ファイル**（`hosts.yml`）に保存され、ストアに残ります。
+- gh は `GH_CONFIG_DIR` にファイルを作成・更新するため、ストアのディレクトリ自体が利用ユーザーで書き込み可能である必要があります。ディレクトリが root 所有で用意された場合は、`postCreateCommand`（`gh-init`）が実行ユーザーへ chown します。
 - `sudo` がコンテナのホスト名を解決できず警告を出す問題（`network_mode: host` で起きやすい）を避けるため、`libnss-myhostname` を導入します。
-
-### 共有範囲（compose 利用時の注意）
-
-`image` / `build` ベースの DevContainer では、ボリューム名 `gh-devcontainers` はそのまま使われるため**全 DevContainer で共有**されます（ログインは一度きり）。一方、`dockerComposeFile` ベースの DevContainer では、Docker Compose がボリューム名を**プロジェクト名でプレフィックス**する（`<project>_gh-devcontainers`）ため、**プロジェクト（リポジトリ）ごとに別ストア**になり、その単位で一度ずつログインが必要です。
 
 ### なぜホストの `~/.config/gh` を共有しないのか
 
@@ -42,9 +46,9 @@ gh auth login
 
 ## 前提・注意
 
-- 認証情報は Docker ボリューム `gh-devcontainers` に**平文ファイル**で保存されます。
+- 認証情報はホストの `~/.config/gh-devcontainers` に**平文ファイル**で保存されます。
+- **ストア用ディレクトリ（`~/.config/gh-devcontainers`）が存在している必要があります**（bind の source。無いと起動失敗）。上記「事前準備」でマシンに一度だけ作成してください。
 - ホストの本来の `gh`（`~/.config/gh`）とは独立です。コンテナ側のログインはホストには影響しません。
-- 共有範囲は compose 利用時に狭まります（上記「共有範囲」を参照）。
 
 ## Windows ホスト
 
