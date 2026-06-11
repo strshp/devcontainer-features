@@ -4,6 +4,14 @@
 
 `gh` 本体は公式の [`github-cli`](https://github.com/devcontainers/features/tree/main/src/github-cli) Feature を `dependsOn` で自動的に取り込んでインストールします。
 
+## 事前準備（初回のみ）
+
+永続ストアは bind マウントのため、**ホスト側にディレクトリが存在している必要があります**（無いとコンテナの起動に失敗します）。初回に一度だけ作成してください。
+
+```bash
+mkdir -p ~/.config/gh-devcontainers
+```
+
 ## 利用例
 
 ```jsonc
@@ -39,7 +47,7 @@ gh auth login
 ## 前提・注意
 
 - 認証情報は専用ストアに**平文ファイル**で保存されます（ユーザーのマシン上 `~/.config/gh-devcontainers`）。
-- ホストの `~/.config/gh-devcontainers` が無い場合、多くの Docker デーモンは自動で作成します（その場合 `gh-init` が利用ユーザーへ chown します）。自動作成しないデーモンでは、起動前に手動で作成してください。
+- **ホストに `~/.config/gh-devcontainers` が存在している必要があります**（bind マウントの source。無いとコンテナ起動に失敗します）。上記「事前準備」で一度だけ作成してください。マウント先が root 所有で作成された環境では、`gh-init` が利用ユーザーへ chown します。
 - ホストの本来の `gh`（`~/.config/gh`）とは独立です。コンテナ側のログインはホストには影響しません。
 
 ## Windows ホスト
