@@ -1,6 +1,6 @@
 # GitHub CLI (gh)
 
-[GitHub CLI](https://cli.github.com/)（`gh`）を導入し、その**認証情報をホストと共有して永続化**する Feature です。`gh auth login` をホストで一度だけ行えば、すべての DevContainer で認証済みの状態になり、コンテナを再ビルドしても再ログインは不要です。
+[GitHub CLI](https://cli.github.com/)（`gh`）を導入し、その**認証情報を専用の永続ストアに保存して永続化**する Feature です。コンテナ内で `gh auth login` を一度行えば、以降は再ビルド越し・すべての DevContainer で認証済みの状態が共有されます。
 
 `gh` 本体は公式の [`github-cli`](https://github.com/devcontainers/features/tree/main/src/github-cli) Feature を `dependsOn` で自動的に取り込んでインストールします。
 
@@ -15,26 +15,32 @@
 }
 ```
 
-オプションはありません。コンテナ起動後はそのまま `gh` が使えます。
+コンテナ初回起動時に一度だけログインします。
 
 ```bash
-gh auth status
-gh pr list
+gh auth login
 ```
+
+以降はトークンが専用ストアに保存され、再ビルドしても・別の DevContainer でも再ログインは不要です。
 
 ## 仕組み
 
-- ホストの `~/.config/gh` をコンテナの `/var/gh-host-config` に bind マウントします。
-- `containerEnv` で `GH_CONFIG_DIR=/var/gh-host-config` を設定し、`gh` の設定ディレクトリをそのマウント先へ向けます。ホームディレクトリへの symlink は作らないため、ビルド時／実行時のユーザーの違いに影響されません。
-- これにより、ホストとコンテナ（および全 DevContainer）が**同一の設定・認証情報**を共有します。ホストで `gh auth login` すればコンテナにも反映され、その逆も同様です。
-- マウント先がまだ存在せず Docker が root 所有で作成した場合のみ、`postCreateCommand`（`gh-init`）が実行ユーザーへ chown します。既存のホスト設定の所有権は変更しません。
+- ホストの `~/.config/gh-devcontainers` をコンテナの `/var/gh-config` に bind マウントし、`containerEnv` で `GH_CONFIG_DIR=/var/gh-config` を設定します。これが DevContainer 共通の永続ストアになります（ホスト固定パスなので全 DevContainer で共有されます）。
+- コンテナには keyring（資格情報ストア）が無いため、`gh auth login` のトークンは自動的に**ファイル**（`hosts.yml`）に保存されます。これがそのまま永続ストアに残ります。
+- マウント先がまだ存在せず Docker が root 所有で作成した場合のみ、`postCreateCommand`（`gh-init`）が実行ユーザーへ chown します。
 - `sudo` がコンテナのホスト名を解決できず警告を出す問題（`network_mode: host` で起きやすい）を避けるため、`libnss-myhostname` を導入します。
+
+### なぜホストの `~/.config/gh` を共有しないのか
+
+`gh` は既定で**トークンを OS の keyring（資格情報ストア）に保存**します。この場合トークンは `~/.config/gh/hosts.yml` には書かれず keyring の中だけにあり、keyring はコンテナから見えません。そのためホストの `~/.config/gh` をマウントしても**トークンは渡らず**、コンテナの `gh` は未認証になってしまいます。これを避けるため、ホストの設定は共有せず、コンテナ内ログインを専用ストアに永続化する方式にしています。
+
+> ホストの既存ログインをそのまま使いたい場合は、`gh auth token` で取り出したトークンを `GH_TOKEN` 環境変数で渡す方法もあります（`devcontainer.json` の `remoteEnv` や `initializeCommand` を併用）。この Feature の既定の挙動には含めていません。
 
 ## 前提・注意
 
-- **ホストに `~/.config/gh` が存在すること。** ホストで一度でも `gh` を使っていれば作られます。これは bind マウントの source なので、無い場合は Docker デーモンによってはコンテナ起動に失敗します。
-- ホストとコンテナで**同じ設定ファイルを共有**します。コンテナ内で `gh auth logout` などを行うとホスト側にも影響します。
-- `gh` の拡張機能（`gh extension`）も共有されますが、アーキテクチャ依存のバイナリを含む拡張は、ホスト（例: macOS）とコンテナ（Linux）で食い違う場合があります。その場合はコンテナ内で再インストールしてください。
+- 認証情報は専用ストアに**平文ファイル**で保存されます（ユーザーのマシン上 `~/.config/gh-devcontainers`）。
+- ホストの `~/.config/gh-devcontainers` が無い場合、多くの Docker デーモンは自動で作成します（その場合 `gh-init` が利用ユーザーへ chown します）。自動作成しないデーモンでは、起動前に手動で作成してください。
+- ホストの本来の `gh`（`~/.config/gh`）とは独立です。コンテナ側のログインはホストには影響しません。
 
 ## Windows ホスト
 

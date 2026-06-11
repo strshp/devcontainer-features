@@ -3,7 +3,7 @@ set -e
 
 echo "Feature 'gh' を有効化しています"
 
-HOST_CONFIG_DIR=/var/gh-host-config
+CONFIG_DIR=/var/gh-config
 
 # ---------------------------------------------------------------------------
 # ホスト名の解決（「sudo: unable to resolve host」警告を消す）。
@@ -31,30 +31,30 @@ fi
 # ---------------------------------------------------------------------------
 # postCreateCommand 用のランタイム初期化ヘルパー。
 #
-# gh は設定を $GH_CONFIG_DIR（Feature の containerEnv で /var/gh-host-config に
-# 設定）から読む。これはホストの ~/.config/gh の bind マウントなので、ユーザー
-# ホームへの symlink は不要。（以前のビルド時 symlink はビルド時ユーザーに依存し、
-# ランタイムのホームが異なると失われて脆かった。）ここではホストディレクトリが
-# 存在し、ランタイムユーザーが書き込めることだけを保証する。
+# gh は設定を $GH_CONFIG_DIR（Feature の containerEnv で /var/gh-config に設定）
+# から読む。これは専用の永続ストア（ホストの ~/.config/gh-devcontainers の bind
+# マウント）。ホストの ~/.config/gh はマウントしない: ホストが keyring に
+# トークンを保存しているとマウントしてもトークンが渡らないため。コンテナには
+# keyring が無いので、このストアで `gh auth login` するとトークンはファイルに
+# 保存され（hosts.yml）、全 DevContainer で共有・再ビルド越しに永続する。
+# ここではストアが存在し、ランタイムユーザーが書き込めることだけを保証する。
 #
-# Docker はマウント元が無いと root 所有で作成する。その場合のみ chown し、
-# 既存のホストファイルには触れないようにする。
+# Docker はマウント元が無いと root 所有で作成する。その場合のみ chown する。
 # ---------------------------------------------------------------------------
 cat > /usr/local/bin/gh-init <<'INITSH'
 #!/bin/sh
 set -e
 TARGET_USER="${SUDO_USER:-$(id -un)}"
 
-HOST_CONFIG_DIR=/var/gh-host-config
+CONFIG_DIR=/var/gh-config
 
-mkdir -p "$HOST_CONFIG_DIR"
+mkdir -p "$CONFIG_DIR"
 
 # Docker が root（uid 0）で作成した直後のときだけ chown する。
-# 既にホストの中身が入っている場合は所有権をそのままにする。
-if [ "$(stat -c '%u' "$HOST_CONFIG_DIR")" = "0" ]; then
-    chown "$TARGET_USER" "$HOST_CONFIG_DIR"
+if [ "$(stat -c '%u' "$CONFIG_DIR")" = "0" ]; then
+    chown "$TARGET_USER" "$CONFIG_DIR"
 fi
 INITSH
 chmod 755 /usr/local/bin/gh-init
 
-echo "GitHub CLI の認証情報の永続化を設定しました（GH_CONFIG_DIR=$HOST_CONFIG_DIR）"
+echo "GitHub CLI を準備しました（GH_CONFIG_DIR=$CONFIG_DIR。コンテナ内で一度 'gh auth login' を実行してください）"
