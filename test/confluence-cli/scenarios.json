@@ -25,5 +25,13 @@
             }
         },
         "remoteUser": "octocat"
+    },
+    "no_claude_docs": {
+        "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+        "features": {
+            "confluence-cli": {
+                "inject_claude_docs": false
+            }
+        }
     }
 }

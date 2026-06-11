@@ -1,8 +1,8 @@
 {
     "name": "Confluence CLI",
     "id": "confluence-cli",
-    "version": "1.0.2",
-    "description": "kci-confluence-cli（confluence コマンド）を PyPI から導入し、接続情報を CONFLUENCE_* 環境変数として設定します。",
+    "version": "1.1.0",
+    "description": "kci-confluence-cli（confluence コマンド）を PyPI から導入し、接続情報を CONFLUENCE_* 環境変数として設定します。Claude Code 向けに使い方ガイドも注入できます。",
     "options": {
         "base_url": {
             "type": "string",
@@ -18,6 +18,11 @@
             "type": "string",
             "default": "",
             "description": "Confluence のパスワード。CONFLUENCE_USER_PASSWORD として展開されます（ビルド時にイメージへ焼き込まれる点に注意）。"
+        },
+        "inject_claude_docs": {
+            "type": "boolean",
+            "default": true,
+            "description": "Claude Code 向けに confluence の使い方ガイドを /etc/claude-code/CLAUDE.md（全セッションで自動ロードされる system レベルのメモリ）へ注入します。"
         }
     },
     "installsAfter": [

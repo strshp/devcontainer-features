@@ -8,6 +8,7 @@ echo "Feature 'confluence-cli' を有効化しています"
 BASE_URL="${BASE_URL:-}"
 USER_NAME="${USER_NAME:-}"
 USER_PASSWORD="${USER_PASSWORD:-}"
+INJECT_CLAUDE_DOCS="${INJECT_CLAUDE_DOCS:-true}"
 
 # uv のツールデータを、全ユーザーが読める共有の場所に置く。これにより（非 root の）
 # リモートユーザーでもインストール済み CLI を実行できる。ランチャは PATH に置く。
@@ -73,6 +74,74 @@ if [ -n "$BASE_URL" ] || [ -n "$USER_NAME" ] || [ -n "$USER_PASSWORD" ]; then
             printf '\n%s\n' "$SRC_LINE" >> "$rc"
         fi
     done
+fi
+
+# --- Claude Code 向けの使い方ガイドを注入 -------------------------------------
+# /etc/claude-code/CLAUDE.md は Claude Code の system(managed) レベルのメモリで、
+# 全セッションで自動ロードされる。リポジトリにコミットされず、~/.claude（ホスト
+# 共有領域）でもないコンテナ内専用の場所なので、ここに confluence の使い方を入れて
+# おくと、エージェントが毎回 CLI の使い方を調べ直さずに済む。マーカー区切りで冪等。
+if [ "$INJECT_CLAUDE_DOCS" = "true" ]; then
+    CLAUDE_MD=/etc/claude-code/CLAUDE.md
+    mkdir -p /etc/claude-code
+    if [ -f "$CLAUDE_MD" ]; then
+        sed -i '/^# BEGIN confluence-cli$/,/^# END confluence-cli$/d' "$CLAUDE_MD"
+    fi
+    {
+        echo "# BEGIN confluence-cli"
+        cat <<'DOC'
+# Confluence CLI (`confluence`)
+
+来栖川電算の Confluence (v6.15.7) を操作する CLI が `confluence` コマンドとして
+インストールされています。体系は `confluence <グループ> <サブコマンド> [オプション]`。
+各コマンドの詳細引数は `confluence <グループ> <サブコマンド> --help` で確認できます
+（このガイドで足りない場合のみ）。
+
+## 認証
+Confluence にアクセスするコマンド（page / content / attachment）は次の環境変数で
+認証します。confluence-cli feature のオプションで設定済みならそのまま使えます。
+- CONFLUENCE_BASE_URL  例: https://confluence.example.com/confluence
+- CONFLUENCE_USER_NAME
+- CONFLUENCE_USER_PASSWORD
+`local` グループ（ローカル変換）は認証不要。page_id / content_id は Confluence の
+ページ URL に含まれる数値 ID です。
+
+## やりたいこと → 使うコマンド
+- ページ/ブログの本文を取得したい:
+  `confluence page get_body -p <PAGE_ID> [--representation storage|view|...] [--pretty] [-o <出力先>]`
+  既定の表現形式は storage。--pretty で整形、-o でファイル保存。
+- ページ/ブログの本文を更新したい:
+  `confluence page update -p <PAGE_ID> --file <storage形式のXML> [--comment "更新理由"] [--yes]`
+  指定した storage XML の内容でページを上書き。--yes で確認を省略（非対話）。
+- HTML を Confluence の storage XML に変換したい（API 不要・ローカル完結）:
+  `confluence local convert_html --input <入力HTML> --output <出力XML>`
+  更新用の storage XML を手元で作るときに使う。
+- 添付ファイルの情報を取得したい:
+  `confluence attachment get -p <PAGE_ID> [--filename <名前>] [--media_type <型>] [--expand <prop>...] [-o <出力先>]`
+- 添付ファイルをアップロードしたい:
+  `confluence attachment create -p <PAGE_ID> (--file <ファイル>... | --dir <ディレクトリ>) [--overwrite] [--mime_type <型>] [--filename_pattern '*.png']`
+  --overwrite で同名ファイルを上書き（未指定だと既存時に 400 エラー）。
+- 添付ファイルを削除したい:
+  `confluence attachment delete -p <PAGE_ID> [--filename <名前>] [--media_type <型>] [--purge]`
+  --purge はゴミ箱からも完全削除（復元不可）。
+- コンテンツ（ページ/ブログ/添付など）の情報を ID で取得したい:
+  `confluence content get_by_id -c <CONTENT_ID> [--expand <prop>...] [-o <出力先>]`
+  --expand で取得プロパティを指定（指定可能値は出力の `_expandable` を参照）。
+
+## 典型ワークフロー
+- 既存ページを書き換える: `page get_body` で現状の storage を取得 → 編集（または HTML を
+  `local convert_html` で storage XML 化）→ `page update --file` で反映。
+- 画像付きで更新: `attachment create` で画像をアップロード → 本文 storage XML から参照 →
+  `page update`。
+
+## 注意
+- page / content / attachment は上記の環境変数認証が必要（未設定だと失敗）。local は不要。
+- `attachment delete --purge` は復元不可。破壊的操作は確認のうえ実行する。
+DOC
+        echo "# END confluence-cli"
+    } >> "$CLAUDE_MD"
+    chmod 644 "$CLAUDE_MD"
+    echo "confluence-cli: Claude 向けガイドを $CLAUDE_MD に注入しました"
 fi
 
 echo "confluence-cli を準備しました: 'confluence' を PATH に配置、CONFLUENCE_* は $ENV_FILE 経由で設定"

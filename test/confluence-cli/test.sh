@@ -15,4 +15,9 @@ check "confluence --help works"     bash -c 'confluence --help >/dev/null 2>&1'
 # オプション無し → env ファイルも無く、既存の環境を上書きしない。
 check "no env file without options" bash -c '[ ! -e /etc/profile.d/confluence-cli.sh ]'
 
+# inject_claude_docs は既定 true → Claude 向けガイドが注入される。
+check "claude docs injected"        test -f /etc/claude-code/CLAUDE.md
+check "claude docs has marker"      grep -q '^# BEGIN confluence-cli$' /etc/claude-code/CLAUDE.md
+check "claude docs has usage"       grep -q 'confluence page get_body' /etc/claude-code/CLAUDE.md
+
 reportResults
