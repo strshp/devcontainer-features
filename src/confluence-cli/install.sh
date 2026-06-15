@@ -115,9 +115,14 @@ Confluence にアクセスするコマンド（page / content / attachment）は
   形式は ID を含まないので REST で解決する（`<TITLE>` は URL エンコードする）:
   `curl -s -u "$CONFLUENCE_USER_NAME:$CONFLUENCE_USER_PASSWORD" "$CONFLUENCE_BASE_URL/rest/api/content?spaceKey=<SPACE>&title=<TITLE>"`
   応答 JSON の `results[].id` が page_id。
+- キーワード・スペース・更新日などでページを全文検索したい（CLI に検索サブコマンドは
+  無いので CQL を REST に投げる。式の組み立ては後述「CQL 検索の組み立て」）:
+  `curl -s -u "$CONFLUENCE_USER_NAME:$CONFLUENCE_USER_PASSWORD" -G "$CONFLUENCE_BASE_URL/rest/api/content/search" --data-urlencode 'cql=<CQL式>' --data 'limit=30'`
+  応答 JSON の `results[]` が該当コンテンツ。`results[].id` を page get_body 等にそのまま渡せる。
 - ページ/ブログの本文を取得したい:
   `confluence page get_body -p <PAGE_ID> [--representation storage|view|...] [--pretty] [-o <出力先>]`
-  既定の表現形式は storage。--pretty で整形、-o でファイル保存。
+  既定の表現形式は storage。読むだけなら view（整形済み HTML）が読みやすく、編集して
+  書き戻すなら storage を使う。--pretty で整形、-o でファイル保存。
 - ページ/ブログの本文を更新したい:
   `confluence page update -p <PAGE_ID> --file <storage形式のXML> [--comment "更新理由"] [--yes]`
   指定した storage XML の内容でページを上書き。--yes で確認を省略（非対話）。
@@ -135,8 +140,33 @@ Confluence にアクセスするコマンド（page / content / attachment）は
 - コンテンツ（ページ/ブログ/添付など）の情報を ID で取得したい:
   `confluence content get_by_id -c <CONTENT_ID> [--expand <prop>...] [-o <出力先>]`
   --expand で取得プロパティを指定（指定可能値は出力の `_expandable` を参照）。
+- 子ページを一覧して情報を深掘りしたい（CLI に該当サブコマンドは無いので REST）:
+  `curl -s -u "$CONFLUENCE_USER_NAME:$CONFLUENCE_USER_PASSWORD" "$CONFLUENCE_BASE_URL/rest/api/content/<PARENT_ID>/child/page?limit=100"`
+  応答 JSON の `results[].id` / `.title` が子ページ。関連情報が子ページにあることが多い。
+
+## CQL 検索の組み立て
+上記の検索（`/rest/api/content/search`）に渡す `cql` は、次の要素を AND / OR で組み合わせる。
+- 全文キーワード: `text ~ "<語>"`。複数語を OR にするなら `(text ~ "A" OR text ~ "B")`。
+- コンテンツ種別: `type = page` または `type = blogpost`。
+- スペース: `space = <SPACE_KEY>`（例 `space = DOC`、実在する Key のみ）。
+- 親コンテンツ: `parent = <CONTENT_ID>`（実在する数値 ID のみ）。
+- 最終更新日: `lastmodified <演算子> <日付>`。演算子は `=` `!=` `>` `>=` `<` `<=`。
+  日付は `"yyyy/MM/dd HH:mm"` / `"yyyy-MM-dd HH:mm"` / `"yyyy/MM/dd"` / `"yyyy-MM-dd"`、
+  または関数 `startOfYear()` `startOfMonth()` `startOfWeek()` `startOfDay()`（今年/今月/今週/今日の起点）。
+
+指針:
+- 「最新の〜」「2025 年以降の〜」などの時間条件は keyword に入れず、必ず `lastmodified`
+  の日付条件で表す。
+- `type` / `space` / `parent` は基本的に指定しない。明確な指示があるときだけ付ける。
+- keyword 無しでも、`space` や `lastmodified` など条件が 1 つでもあれば検索できる。
+
+例（`--data-urlencode 'cql=...'` に渡す式）:
+- DOC スペースの今週の最新記事: `space = DOC AND lastmodified >= startOfWeek()`
+- 2025 年以降の社内報: `text ~ "社内報" AND lastmodified >= "2025/01/01"`
 
 ## 典型ワークフロー
+- 情報を探して読む: CQL 検索で候補を出す → `results[].id` を `page get_body` で本文取得 →
+  必要なら子ページを `child/page` で辿って深掘り。
 - 既存ページを書き換える: `page get_body` で現状の storage を取得 → 編集（または HTML を
   `local convert_html` で storage XML 化）→ `page update --file` で反映。
 - 画像付きで更新: `attachment create` で画像をアップロード → 本文 storage XML から参照 →
