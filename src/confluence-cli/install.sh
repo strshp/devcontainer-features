@@ -94,8 +94,9 @@ if [ "$INJECT_CLAUDE_DOCS" = "true" ]; then
 
 来栖川電算の Confluence (v6.15.7) を操作する CLI が `confluence` コマンドとして
 インストールされています。体系は `confluence <グループ> <サブコマンド> [オプション]`。
-各コマンドの詳細引数は `confluence <グループ> <サブコマンド> --help` で確認できます
-（このガイドで足りない場合のみ）。
+このガイドに載っているコマンドはそのまま信頼して実行してよく、単純な閲覧・更新で
+毎回 `--help` を引き直す必要はない。ガイドで触れていない引数が必要なときだけ
+`confluence <グループ> <サブコマンド> --help` で確認する。
 
 ## 認証
 Confluence にアクセスするコマンド（page / content / attachment）は次の環境変数で
@@ -103,10 +104,17 @@ Confluence にアクセスするコマンド（page / content / attachment）は
 - CONFLUENCE_BASE_URL  例: https://confluence.example.com/confluence
 - CONFLUENCE_USER_NAME
 - CONFLUENCE_USER_PASSWORD
-`local` グループ（ローカル変換）は認証不要。page_id / content_id は Confluence の
-ページ URL に含まれる数値 ID です。
+`local` グループ（ローカル変換）は認証不要。page_id / content_id は数値 ID で、
+`.../pages/viewpage.action?pageId=123` 形式の URL なら URL 内に含まれる。一方
+`.../display/<SPACE>/<Title>` 形式の URL には ID が無いので、下記「ページ URL や
+タイトルから page_id を調べたい」で先に ID を解決する。
 
 ## やりたいこと → 使うコマンド
+- ページ URL やタイトルから page_id を調べたい（CLI に該当サブコマンドは無い）:
+  `viewpage.action?pageId=...` 形式は URL からそのまま読み取る。`display/<SPACE>/<Title>`
+  形式は ID を含まないので REST で解決する（`<TITLE>` は URL エンコードする）:
+  `curl -s -u "$CONFLUENCE_USER_NAME:$CONFLUENCE_USER_PASSWORD" "$CONFLUENCE_BASE_URL/rest/api/content?spaceKey=<SPACE>&title=<TITLE>"`
+  応答 JSON の `results[].id` が page_id。
 - ページ/ブログの本文を取得したい:
   `confluence page get_body -p <PAGE_ID> [--representation storage|view|...] [--pretty] [-o <出力先>]`
   既定の表現形式は storage。--pretty で整形、-o でファイル保存。
