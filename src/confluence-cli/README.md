@@ -6,7 +6,6 @@
 
 ```jsonc
 {
-    "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
     "features": {
         "ghcr.io/strshp/devcontainer-features/confluence-cli": {
             "base_url": "https://confluence.example.com",

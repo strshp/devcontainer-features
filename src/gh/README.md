@@ -16,7 +16,6 @@ mkdir -p ~/.config/gh-devcontainers
 
 ```jsonc
 {
-    "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
     "features": {
         "ghcr.io/strshp/devcontainer-features/gh": {}
     }

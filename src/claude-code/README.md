@@ -25,7 +25,6 @@ Claude Code の状態をコンテナ再ビルド越し・DevContainer 間で永�
 
 ```jsonc
 {
-    "image": "mcr.microsoft.com/devcontainers/base:debian",
     "features": {
         "ghcr.io/strshp/devcontainer-features/claude-code": {}
     }

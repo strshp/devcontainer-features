@@ -21,7 +21,6 @@
 
 ```jsonc
 {
-    "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
     "features": {
         "ghcr.io/strshp/devcontainer-features/claude-code": {},
         "ghcr.io/strshp/devcontainer-features/gh": {},
