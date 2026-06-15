@@ -23,9 +23,11 @@ Claude Code の状態をコンテナ再ビルド越し・DevContainer 間で永�
 
 ## 利用例
 
+利用者ごとの VS Code ユーザー設定（`settings.json`、Linux では `~/.config/Code/User/settings.json`）の `dev.containers.defaultFeatures` に登録します。
+
 ```jsonc
 {
-    "features": {
+    "dev.containers.defaultFeatures": {
         "ghcr.io/strshp/devcontainer-features/claude-code": {}
     }
 }

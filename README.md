@@ -3,7 +3,7 @@
 [![CI - Test Features](https://github.com/strshp/devcontainer-features/actions/workflows/test.yaml/badge.svg)](https://github.com/strshp/devcontainer-features/actions/workflows/test.yaml)
 [![Release](https://github.com/strshp/devcontainer-features/actions/workflows/release.yaml/badge.svg)](https://github.com/strshp/devcontainer-features/actions/workflows/release.yaml)
 
-[Dev Container Features](https://containers.dev/implementors/features/) を開発・公開しているリポジトリです。各 Feature は GitHub Container Registry (ghcr.io) で配布しており、`devcontainer.json` の `features` に追記するだけで利用できます。
+[Dev Container Features](https://containers.dev/implementors/features/) を開発・公開しているリポジトリです。各 Feature は GitHub Container Registry (ghcr.io) で配布しており、利用者ごとの VS Code ユーザー設定（`dev.containers.defaultFeatures`）に登録することで、自分が開くすべての DevContainer に自動で適用されます。
 
 ## Features 一覧
 
@@ -17,11 +17,13 @@
 
 ## 使い方
 
-`devcontainer.json` の `features` に、ghcr 上の Feature を参照する 1 行を追加します。
+プロジェクトの `devcontainer.json` ではなく、**利用者ごとの VS Code ユーザー設定**の `dev.containers.defaultFeatures` に登録します。こうすると、リポジトリ側に何も書かなくても、自分が開くすべての DevContainer に Feature が自動で適用されます。
+
+VS Code の設定ファイル（`settings.json`）に次を追記します（Linux では `~/.config/Code/User/settings.json`）。
 
 ```jsonc
 {
-    "features": {
+    "dev.containers.defaultFeatures": {
         "ghcr.io/strshp/devcontainer-features/claude-code": {},
         "ghcr.io/strshp/devcontainer-features/gh": {},
         "ghcr.io/strshp/devcontainer-features/confluence-cli": {
@@ -32,6 +34,8 @@
     }
 }
 ```
+
+> 設定 UI から開く場合は「Dev > Containers: Default Features」を検索し、`settings.json` で編集します。
 
 バージョンはタグで固定できます。メジャータグ（例: `claude-code:2`）を指定すると、その系列内の最新を追従します。完全に固定したい場合は `claude-code:2.4.1` のようにフルバージョンを指定してください。
 

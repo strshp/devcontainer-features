@@ -4,9 +4,11 @@
 
 ## 利用例
 
+利用者ごとの VS Code ユーザー設定（`settings.json`、Linux では `~/.config/Code/User/settings.json`）の `dev.containers.defaultFeatures` に登録します。
+
 ```jsonc
 {
-    "features": {
+    "dev.containers.defaultFeatures": {
         "ghcr.io/strshp/devcontainer-features/confluence-cli": {
             "base_url": "https://confluence.example.com",
             "user_name": "alice",
