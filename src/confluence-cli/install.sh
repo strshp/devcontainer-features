@@ -172,6 +172,19 @@ Confluence にアクセスするコマンド（page / content / attachment）は
 - 画像付きで更新: `attachment create` で画像をアップロード → 本文 storage XML から参照 →
   `page update`。
 
+## 書き込み前の承認
+Confluence への書き込み（`page update` / `attachment create` / `attachment delete`）は、
+**既定でユーザーの承認を得てから実行する**。読み取り（get_body / get_by_id / 検索 /
+child / `local`）は承認不要。
+- 承認は**ページ単位**で求める。対象ページ（page_id とタイトル）と変更内容を提示し、
+  そのページについて承認を得てから実行する。複数ページに書き込むなら、ページごとに
+  個別に承認を取る（まとめて一括承認にしない）。1 ページへの添付の追加・削除は、その
+  ページの書き込みとしてまとめて承認してよい。
+- 次のいずれかに当てはまる場合は、この承認を省略してよい:
+  - ユーザーが「承認は不要」と明示している。
+  - `--dangerously-skip-permissions` が ON。
+- `--purge` のような復元不可の操作は、承認を省略する設定でも内容を明示してから実行する。
+
 ## 注意
 - page / content / attachment は上記の環境変数認証が必要（未設定だと失敗）。local は不要。
 - `attachment delete --purge` は復元不可。破壊的操作は確認のうえ実行する。
