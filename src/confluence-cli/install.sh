@@ -110,7 +110,7 @@ Confluence を検索する。
 ## 認証
 Confluence にアクセスするコマンド（page / content / attachment）は次の環境変数で
 認証します。confluence-cli feature のオプションで設定済みならそのまま使えます。
-- CONFLUENCE_BASE_URL  例: https://kurusugawa.jp/confluence
+- CONFLUENCE_BASE_URL  例: https://confluence.example.com/confluence
 - CONFLUENCE_USER_NAME
 - CONFLUENCE_USER_PASSWORD
 `local` グループ（ローカル変換）は認証不要。page_id / content_id は数値 ID で、
