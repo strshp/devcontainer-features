@@ -82,6 +82,15 @@ fi
 # 共有領域）でもないコンテナ内専用の場所なので、ここに confluence の使い方を入れて
 # おくと、エージェントが毎回 CLI の使い方を調べ直さずに済む。マーカー区切りで冪等。
 if [ "$INJECT_CLAUDE_DOCS" = "true" ]; then
+    # 注入ガイドの REST 補助例（JSON 整形・HTML 平文化）は python3 を使う。ベース
+    # イメージに無いことがあるので、curl と同様に apt があれば入れておく（uv 管理の
+    # Python は隔離環境にあり PATH 上の python3 にはならないため）。
+    if ! command -v python3 >/dev/null 2>&1 && command -v apt-get >/dev/null 2>&1; then
+        export DEBIAN_FRONTEND=noninteractive
+        apt-get update -y
+        apt-get install -y --no-install-recommends python3
+    fi
+
     CLAUDE_MD=/etc/claude-code/CLAUDE.md
     mkdir -p /etc/claude-code
     if [ -f "$CLAUDE_MD" ]; then
