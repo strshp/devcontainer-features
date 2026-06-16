@@ -48,6 +48,7 @@ confluence --help
 - 注入先はリポジトリにコミットされず、`~/.claude`（claude-code feature がホストと共有する領域）でもない、**コンテナ内専用**の場所です。
 - `# BEGIN confluence-cli` 〜 `# END confluence-cli` のマーカーで囲い、**冪等**に書き込みます（既存の `/etc/claude-code/CLAUDE.md` の内容は保持）。
 - Codex 等の他エージェントには対応していません（Codex には system レベルの指示注入先が無いため）。
+- ガイド内の REST 補助例（JSON 整形・HTML 平文化）は `python3` を使うため、コンテナに無く `apt-get` が使えるときは `python3` を導入します（`inject_claude_docs` が無効なら導入しません）。
 - 不要な場合は `"inject_claude_docs": false` で無効化できます。
 
 ## セキュリティ上の注意

@@ -82,6 +82,15 @@ fi
 # 共有領域）でもないコンテナ内専用の場所なので、ここに confluence の使い方を入れて
 # おくと、エージェントが毎回 CLI の使い方を調べ直さずに済む。マーカー区切りで冪等。
 if [ "$INJECT_CLAUDE_DOCS" = "true" ]; then
+    # 注入ガイドの REST 補助例（JSON 整形・HTML 平文化）は python3 を使う。ベース
+    # イメージに無いことがあるので、curl と同様に apt があれば入れておく（uv 管理の
+    # Python は隔離環境にあり PATH 上の python3 にはならないため）。
+    if ! command -v python3 >/dev/null 2>&1 && command -v apt-get >/dev/null 2>&1; then
+        export DEBIAN_FRONTEND=noninteractive
+        apt-get update -y
+        apt-get install -y --no-install-recommends python3
+    fi
+
     CLAUDE_MD=/etc/claude-code/CLAUDE.md
     mkdir -p /etc/claude-code
     if [ -f "$CLAUDE_MD" ]; then
@@ -97,6 +106,15 @@ if [ "$INJECT_CLAUDE_DOCS" = "true" ]; then
 このガイドに載っているコマンドはそのまま信頼して実行してよく、単純な閲覧・更新で
 毎回 `--help` を引き直す必要はない。ガイドで触れていない引数が必要なときだけ
 `confluence <グループ> <サブコマンド> --help` で確認する。
+
+## いつ Confluence を使うか（来栖川電算の社内ナレッジ）
+来栖川電算の Confluence は、社内のあらゆる情報が蓄積された社内ナレッジベースである。
+会話の中で不足している情報があると考えられる場合にリポジトリ内を調べても見つからないときに
+Confluence を検索する。
+例として次のような情報はコードに現れない業務知識のため Confluence に答えがある可能性が高い:
+- プロジェクト・案件の背景や経緯、過去の議事録・報告。
+- 製品仕様や調査・検討の結果など、リポジトリには残らない知識。
+検索の具体的な手順は下記「CQL 検索の組み立て」「典型ワークフロー」に従う。
 
 ## 認証
 Confluence にアクセスするコマンド（page / content / attachment）は次の環境変数で
@@ -119,21 +137,44 @@ Confluence にアクセスするコマンド（page / content / attachment）は
   無いので CQL を REST に投げる。式の組み立ては後述「CQL 検索の組み立て」）:
   `curl -s -u "$CONFLUENCE_USER_NAME:$CONFLUENCE_USER_PASSWORD" -G "$CONFLUENCE_BASE_URL/rest/api/content/search" --data-urlencode 'cql=<CQL式>' --data 'limit=30'`
   応答 JSON の `results[]` が該当コンテンツ。`results[].id` を page get_body 等にそのまま渡せる。
+  id・種別・タイトルだけ一覧するなら出力を絞る:
+  `... | python3 -c "import sys,json; [print(r['id'],r['type'],r['title']) for r in json.load(sys.stdin)['results']]"`
+  同じファイル名の attachment が別 ID で複数並ぶことがある（同じファイルが複数ページに添付されているだけ）。
+  一覧でノイズになるので、取捨選択のときはタイトルで重複排除すると見やすい。
+  候補が多く本文を見て取捨選択したいときは `--data 'expand=body.view'` を足すと、各 `results[].body.view.value`
+  に本文(HTML)が同梱され、ヒットごとに get_body を呼ぶ往復を省ける（HTML の平文化は下記「本文を取得したい」と同じ要領）。
+  ただし body.view が付くのは page / blogpost のみ。attachment（PDF・画像）には本文が同梱されないので、
+  答えが添付にありそうなら expand に頼らず下記「添付ファイルの実体を…ダウンロードして中身を読みたい」の手順で実体を確認する。
+  さらに `text ~` の全文検索はページ本文だけでなく**添付ファイルの中身にもマッチする**。そのため page が
+  ヒットしても body.view の本文には検索語が含まれないことがある（語は添付内にある）。body.view を平文化して
+  検索語で絞り込むと空振りすることがあるので、空振りしたらそのページの `child/attachment` や検索結果の
+  attachment 実体を確認する。
 - ページ/ブログの本文を取得したい:
   `confluence page get_body -p <PAGE_ID> [--representation storage|view|...] [--pretty] [-o <出力先>]`
   既定の表現形式は storage。読むだけなら view（整形済み HTML）が読みやすく、編集して
   書き戻すなら storage を使う。--pretty で整形、-o でファイル保存。
+  本文を「読んで要約・把握する」用途では HTML/XML のままだと扱いにくいので、view を取得して
+  タグを除去し平文化すると良い（INFO ログは stderr に出るので `2>/dev/null` で捨てる）。例:
+  `confluence page get_body -p <PAGE_ID> --representation view 2>/dev/null | python3 -c "import sys,re,html; print(re.sub(r'[ \t]+',' ', html.unescape(re.sub('<[^>]+>',' ', sys.stdin.read()))))"`
 - ページ/ブログの本文を更新したい:
-  `confluence page update -p <PAGE_ID> --file <storage形式のXML> [--comment "更新理由"] [--yes]`
+  `confluence page update -p <PAGE_ID> --xml_file <storage形式のXML> [--comment "更新理由"] [--yes]`
   指定した storage XML の内容でページを上書き。--yes で確認を省略（非対話）。
 - HTML を Confluence の storage XML に変換したい（API 不要・ローカル完結）:
-  `confluence local convert_html --input <入力HTML> --output <出力XML>`
+  `confluence local convert_html <入力HTML> <出力XML>`
   更新用の storage XML を手元で作るときに使う。
 - 添付ファイルの情報を取得したい:
   `confluence attachment get -p <PAGE_ID> [--filename <名前>] [--media_type <型>] [--expand <prop>...] [-o <出力先>]`
+- 添付ファイルの実体（PDF・画像など）をダウンロードして中身を読みたい（CLI に該当サブコマンドは
+  無いので REST で実体 URL を引いて取得する）: まず添付の content_id（検索結果の attachment や
+  `child/attachment` から得られる）で実体 URL を組み立てる。ダウンロード URL は `_links.base` +
+  `_links.download` で、相対パスの `download` を base に連結する:
+  `url=$(curl -s -u "$CONFLUENCE_USER_NAME:$CONFLUENCE_USER_PASSWORD" "$CONFLUENCE_BASE_URL/rest/api/content/<ATTACHMENT_ID>" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['_links']['base']+d['_links']['download'])")`
+  `curl -s -u "$CONFLUENCE_USER_NAME:$CONFLUENCE_USER_PASSWORD" -L -o <保存先> "$url"`
+  保存後はファイルの中身を直接読む（PDF や画像も読める）。答えが添付（製品資料の PDF など）にある
+  ことは多いので、検索で attachment がヒットしたらこの手順で実体を確認する。
 - 添付ファイルをアップロードしたい:
-  `confluence attachment create -p <PAGE_ID> (--file <ファイル>... | --dir <ディレクトリ>) [--overwrite] [--mime_type <型>] [--filename_pattern '*.png']`
-  --overwrite で同名ファイルを上書き（未指定だと既存時に 400 エラー）。
+  `confluence attachment create -p <PAGE_ID> (--file <ファイル>... | --dir <ディレクトリ>) [--allow_duplicated] [--mime_type <型>] [--filename_pattern '*.png']`
+  --allow_duplicated で同名ファイルを上書き（未指定だと既存時に 400 エラー）。
 - 添付ファイルを削除したい:
   `confluence attachment delete -p <PAGE_ID> [--filename <名前>] [--media_type <型>] [--purge]`
   --purge はゴミ箱からも完全削除（復元不可）。
@@ -147,6 +188,11 @@ Confluence にアクセスするコマンド（page / content / attachment）は
 ## CQL 検索の組み立て
 上記の検索（`/rest/api/content/search`）に渡す `cql` は、次の要素を AND / OR で組み合わせる。
 - 全文キーワード: `text ~ "<語>"`。複数語を OR にするなら `(text ~ "A" OR text ~ "B")`。
+  `text ~ "A B C"` のようにクォート内に複数語を並べても、フレーズ完全一致ではなく語に分解した
+  あいまい一致になり、`text ~ "A"` 単体とヒット集合がほぼ重なる。単語版とフレーズ版を別々に投げる
+  二度手間は不要で、まず広めに引いてからタイトルや本文で手元で絞る方が確実。
+- タイトル: `title ~ "<語>"`。文書名が分かっているときは `text ~` より高精度でノイズが少ない。
+  本文も併せて拾うなら `(title ~ "<語>" OR text ~ "<語>")`。
 - コンテンツ種別: `type = page` または `type = blogpost`。
 - スペース: `space = <SPACE_KEY>`（例 `space = DOC`、実在する Key のみ）。
 - 親コンテンツ: `parent = <CONTENT_ID>`（実在する数値 ID のみ）。
@@ -165,10 +211,11 @@ Confluence にアクセスするコマンド（page / content / attachment）は
 - 2025 年以降の社内報: `text ~ "社内報" AND lastmodified >= "2025/01/01"`
 
 ## 典型ワークフロー
-- 情報を探して読む: CQL 検索で候補を出す → `results[].id` を `page get_body` で本文取得 →
-  必要なら子ページを `child/page` で辿って深掘り。
+- 情報を探して読む: CQL 検索で候補を出す（多ければ `expand=body.view` で本文同梱して取捨選択）→
+  `results[].id` を `page get_body` で本文取得し view を平文化して読む → 添付がヒットしたら実体を
+  ダウンロードして中身を確認 → 必要なら子ページを `child/page` で辿って深掘り。
 - 既存ページを書き換える: `page get_body` で現状の storage を取得 → 編集（または HTML を
-  `local convert_html` で storage XML 化）→ `page update --file` で反映。
+  `local convert_html` で storage XML 化）→ `page update --xml_file` で反映。
 - 画像付きで更新: `attachment create` で画像をアップロード → 本文 storage XML から参照 →
   `page update`。
 
@@ -184,10 +231,6 @@ child / `local`）は承認不要。
   - ユーザーが「承認は不要」と明示している。
   - `--dangerously-skip-permissions` が ON。
 - `--purge` のような復元不可の操作は、承認を省略する設定でも内容を明示してから実行する。
-
-## 注意
-- page / content / attachment は上記の環境変数認証が必要（未設定だと失敗）。local は不要。
-- `attachment delete --purge` は復元不可。破壊的操作は確認のうえ実行する。
 DOC
         echo "# END confluence-cli"
     } >> "$CLAUDE_MD"
